@@ -511,7 +511,7 @@ ngx_http_ssl_alpn_select(ngx_ssl_conn_t *ssl_conn, const unsigned char **out,
     ngx_http_v2_srv_conf_t *h2scf;
 #endif
 #endif
-#if (NGX_HTTP_V2 || NGX_DEBUG)
+#if (NGX_HTTP_V2 || NGX_HTTP_QUIC || NGX_DEBUG)
     ngx_connection_t       *c;
 
     c = ngx_ssl_get_connection(ssl_conn);
