@@ -183,6 +183,21 @@ ngx_stream_init_connection(ngx_connection_t *c)
     s->start_sec = tp->sec;
     s->start_msec = tp->msec;
 
+#if (NGX_STREAM_QUIC)
+
+    if (addr_conf->quic) {
+        ngx_quic_conf_t  *qcf;
+
+        if (c->quic == NULL) {
+            qcf = ngx_stream_get_module_srv_conf(addr_conf->ctx,
+                                                 ngx_stream_quic_module);
+            ngx_quic_run(c, qcf);
+            return;
+        }
+    }
+
+#endif
+
     rev = c->read;
     rev->handler = ngx_stream_session_handler;
 
