@@ -4431,7 +4431,6 @@ ngx_http_grpc_create_loc_conf(ngx_conf_t *cf)
     conf->upstream.tls_method = NULL;
     conf->upstream.enable_ntls = NULL;
 #endif
-#endif
 
     /* the hardcoded values */
     conf->upstream.cyclic_temp_file = 0;
