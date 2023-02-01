@@ -234,6 +234,10 @@ static char *ngx_http_proxy_ssl_password_file(ngx_conf_t *cf,
 #endif
 
 static char *ngx_http_proxy_lowat_check(ngx_conf_t *cf, void *post, void *data);
+#if (NGX_HTTP_SSL)
+static char *ngx_http_proxy_ssl_conf_command_check(ngx_conf_t *cf, void *post,
+    void *data);
+#endif
 
 static ngx_int_t ngx_http_proxy_rewrite_regex(ngx_conf_t *cf,
     ngx_http_proxy_rewrite_t *pr, ngx_str_t *regex, ngx_uint_t caseless);

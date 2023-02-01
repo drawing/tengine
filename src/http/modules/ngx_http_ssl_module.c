@@ -854,7 +854,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 #if (T_NGX_SSL_NTLS)
         }
 #endif
-        else if (!conf->reject_handshake) {
+        } else if (!conf->reject_handshake) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
 #if (T_NGX_SSL_NTLS)
                           "no \"ssl_certificate\", \"ssl_enc_certificate\" or"
