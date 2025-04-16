@@ -94,7 +94,6 @@ typedef struct ngx_ssl_ocsp_s  ngx_ssl_ocsp_t;
 #define SSL_group_to_name(s, nid)    NULL
 #endif
 
-
 typedef struct ngx_ssl_ocsp_s   ngx_ssl_ocsp_t;
 
 
