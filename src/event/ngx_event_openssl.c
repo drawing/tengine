@@ -691,19 +691,43 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
 #endif
 {
     char            *err;
-    X509            *x509;
+    X509            *x509, **elm;
+    u_long           n;
     EVP_PKEY        *pkey;
+    ngx_uint_t       mask;
     STACK_OF(X509)  *chain;
 
-    x509 = ngx_ssl_load_certificate(cf->pool, &err, cert, &chain);
-    if (x509 == NULL) {
-        if (err != NULL) {
-            ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                          "cannot load certificate \"%s\": %s",
-                          cert->data, err);
+    mask = 0;
+    elm = NULL;
+
+retry:
+
+#if (T_NGX_SSL_NTLS)
+    if (cert_tag == SSL_ENC_CERT || cert_tag == SSL_SIGN_CERT) {
+        x509 = ngx_ssl_load_certificate(cf->pool, &err, cert, &chain);
+        if (x509 == NULL) {
+            if (err != NULL) {
+                ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                              "cannot load certificate \"%s\": %s",
+                              cert->data, err);
+            }
+            return NGX_ERROR;
+        }
+    } else
+#endif
+    {
+        chain = ngx_ssl_cache_fetch(cf, NGX_SSL_CACHE_CERT | mask,
+                                    &err, cert, NULL);
+        if (chain == NULL) {
+            if (err != NULL) {
+                ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
+                              "cannot load certificate \"%s\": %s",
+                              cert->data, err);
+            }
+            return NGX_ERROR;
         }
 
-        return NGX_ERROR;
+        x509 = sk_X509_shift(chain);
     }
 
 #if (T_NGX_SSL_NTLS)
@@ -754,6 +778,28 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
         return NGX_ERROR;
     }
 
+    if (ssl->certs.elts == NULL) {
+        if (ngx_array_init(&ssl->certs, cf->pool, 1, sizeof(X509 *))
+            != NGX_OK)
+        {
+            X509_free(x509);
+            sk_X509_pop_free(chain, X509_free);
+            return NGX_ERROR;
+        }
+    }
+
+    if (elm == NULL) {
+        elm = ngx_array_push(&ssl->certs);
+        if (elm == NULL) {
+            X509_free(x509);
+            sk_X509_pop_free(chain, X509_free);
+            return NGX_ERROR;
+        }
+
+    } else {
+        X509_free(*elm);
+    }
+
     if (SSL_CTX_set_ex_data(ssl->ctx, ngx_ssl_certificate_index, x509) == 0) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                       "SSL_CTX_set_ex_data() failed");
@@ -762,11 +808,13 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
         return NGX_ERROR;
     }
 
+    *elm = x509;
+
     /*
      * Note that x509 is not freed here, but will be instead freed in
      * ngx_ssl_cleanup_ctx().  This is because we need to preserve all
      * certificates to be able to iterate all of them through exdata
-     * (ngx_ssl_certificate_index, ngx_ssl_next_certificate_index),
+     * (ngx_ssl_certificate_index, ngx_ssl_next_certificate_index) and ssl->certs,
      * while OpenSSL can free a certificate if it is replaced with another
      * certificate of the same type.
      */
@@ -781,10 +829,20 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     }
 
 #else
-    {
-    int  n;
 
     /* SSL_CTX_set0_chain() is only available in OpenSSL 1.0.2+ */
+
+#ifdef SSL_CTRL_CLEAR_EXTRA_CHAIN_CERTS
+    /* OpenSSL 1.0.1+ */
+    SSL_CTX_clear_extra_chain_certs(ssl->ctx);
+#else
+
+    if (ssl->ctx->extra_certs) {
+        sk_X509_pop_free(ssl->ctx->extra_certs, X509_free);
+        ssl->ctx->extra_certs = NULL;
+    }
+
+#endif
 
     n = sk_X509_num(chain);
 
@@ -801,10 +859,18 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     }
 
     sk_X509_free(chain);
-    }
+
 #endif
 
-    pkey = ngx_ssl_load_certificate_key(cf->pool, &err, key, passwords);
+#if (T_NGX_SSL_NTLS)
+    if (cert_tag == SSL_ENC_CERT || cert_tag == SSL_SIGN_CERT) {
+        pkey = ngx_ssl_load_certificate_key(cf->pool, &err, key, passwords);
+    } else
+#endif
+    {
+        pkey = ngx_ssl_cache_fetch(cf, NGX_SSL_CACHE_PKEY | mask,
+                                   &err, key, passwords);
+    }
     if (pkey == NULL) {
         if (err != NULL) {
             ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
@@ -835,9 +901,23 @@ ngx_ssl_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *cert,
     } else
 #endif
     if (SSL_CTX_use_PrivateKey(ssl->ctx, pkey) == 0) {
+        EVP_PKEY_free(pkey);
+
+        /* there can be mismatched pairs on uneven cache update */
+
+        n = ERR_peek_last_error();
+
+        if (ERR_GET_LIB(n) == ERR_LIB_X509
+            && ERR_GET_REASON(n) == X509_R_KEY_VALUES_MISMATCH
+            && mask == 0)
+        {
+            ERR_clear_error();
+            mask = NGX_SSL_CACHE_INVALIDATE;
+            goto retry;
+        }
+
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
                       "SSL_CTX_use_PrivateKey(\"%s\") failed", key->data);
-        EVP_PKEY_free(pkey);
         return NGX_ERROR;
     }
 
