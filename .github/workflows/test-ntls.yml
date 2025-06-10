@@ -21,7 +21,6 @@ jobs:
           path: tengine
       - name: get dependencies
         run: |
-          sudo apt install -y libpcre3 libpcre3-dev libevent-dev cmake
       - name: 'checkout luajit2'
         uses: actions/checkout@v3
         with:
