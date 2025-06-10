@@ -15,10 +15,7 @@ jobs:
           path: tengine
       - name: get dependencies
         run: |
-<<<<<<< HEAD
-=======
           sudo apt install -y libpcre3 libpcre3-dev
->>>>>>> 096978c6b (Set pip size function only on linux (#1994))
       - name: 'checkout luajit2'
         uses: actions/checkout@v3
         with:
