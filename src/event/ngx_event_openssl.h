@@ -90,7 +90,7 @@ typedef struct ngx_ssl_ocsp_s  ngx_ssl_ocsp_t;
 #endif
 
 
-#if (OPENSSL_VERSION_NUMBER < 0x3000000fL)
+#if (OPENSSL_VERSION_NUMBER < 0x30000000L)
 #define SSL_group_to_name(s, nid)    NULL
 #endif
 
