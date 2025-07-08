@@ -5806,7 +5806,7 @@ ngx_ssl_get_curve(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
             return NGX_OK;
         }
 
-        s->len = sizeof("0x0000") - 1;
+        name = SSL_group_to_name(c->ssl->connection, nid);
 
         s->data = ngx_pnalloc(pool, s->len);
         if (s->data == NULL) {
@@ -5850,7 +5850,9 @@ ngx_ssl_get_curves(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
         nid = curves[i];
 
         if (nid & TLSEXT_nid_unknown) {
-            len += sizeof("0x0000") - 1;
+            name = SSL_group_to_name(c->ssl->connection, nid);
+
+            len += name ? ngx_strlen(name) : sizeof("0x0000") - 1;
 
         } else {
             len += ngx_strlen(OBJ_nid2sn(nid));
@@ -5870,7 +5872,10 @@ ngx_ssl_get_curves(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
         nid = curves[i];
 
         if (nid & TLSEXT_nid_unknown) {
-            p = ngx_sprintf(p, "0x%04xd", nid & 0xffff);
+            name = SSL_group_to_name(c->ssl->connection, nid);
+
+            p = name ? ngx_cpymem(p, name, ngx_strlen(name))
+                     : ngx_sprintf(p, "0x%04xd", nid & 0xffff);
 
         } else {
             p = ngx_sprintf(p, "%s", OBJ_nid2sn(nid));
