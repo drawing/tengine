@@ -12,12 +12,10 @@
 
 /* NetBSD up to 10.0 incompatibly defines kevent.udata as "intptr_t" */
 
-#ifndef NGX_KQUEUE_UDATA_T
-#if (__NetBSD__ && __NetBSD_Version__ < 1000000000)
+#if (__NetBSD__)
 #define NGX_KQUEUE_UDATA_T
 #else
 #define NGX_KQUEUE_UDATA_T  (void *)
-#endif
 #endif
 
 
