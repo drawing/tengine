@@ -10,11 +10,9 @@
 #include <ngx_event.h>
 
 
-/* NetBSD up to 10.0 incompatibly defines kevent.udata as "intptr_t" */
+/* NetBSD incompatibly defines kevent.udata as "intptr_t" */
 
-#if (__NetBSD__ && __NetBSD_Version__ < 1000000000)
-#define NGX_KQUEUE_UDATA_T
-#else
+#ifndef NGX_KQUEUE_UDATA_T
 #define NGX_KQUEUE_UDATA_T  (void *)
 #endif
 
