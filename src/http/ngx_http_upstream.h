@@ -444,7 +444,6 @@ struct ngx_http_upstream_s {
     unsigned                         request_body_sent:1;
     unsigned                         request_body_blocked:1;
     unsigned                         header_sent:1;
-
 #if (T_NGX_MULTI_UPSTREAM)
     unsigned                         multi:1;
     void                            *multi_init;
@@ -452,6 +451,7 @@ struct ngx_http_upstream_s {
     ngx_flag_t                       multi_mode;
 #endif
 
+    unsigned                         response_received:1;
 };
 
 
