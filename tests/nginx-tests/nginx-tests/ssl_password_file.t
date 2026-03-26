@@ -25,7 +25,6 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-
 plan(skip_all => 'win32') if $^O eq 'MSWin32';
 plan(skip_all => 'nginx 1.28.3+ ssl_password_file inheritance changed') if $ENV{TEST_NGINX_BINARY} && `$ENV{TEST_NGINX_BINARY} -V 2>&1` =~ /nginx\/1\.28/;
 
@@ -137,8 +136,3 @@ like(http_get('/'), qr/200 OK.*http/ms, 'http');
 like(http_get('/', SSL => 1), qr/200 OK.*https/ms, 'https');
 
 ###############################################################################
-
-
-
-
-
