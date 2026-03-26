@@ -215,6 +215,7 @@ ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
         return type->create(&id, err, data);
     }
 
+
     type = &ngx_ssl_cache_types[index];
     hash = ngx_murmur_hash2(id.data, id.len);
 
