@@ -45,6 +45,37 @@ struct ngx_http_upstream_rr_peer_s {
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     ngx_str_t                       dyn_host;
 #endif
+
+    ngx_int_t                       current_weight;
+    ngx_int_t                       effective_weight;
+    ngx_int_t                       weight;
+
+    ngx_uint_t                      conns;
+    ngx_uint_t                      max_conns;
+
+    ngx_uint_t                      fails;
+    time_t                          accessed;
+    time_t                          checked;
+
+    ngx_uint_t                      max_fails;
+    time_t                          fail_timeout;
+    ngx_msec_t                      slow_start;
+    ngx_msec_t                      start_time;
+
+    ngx_uint_t                      down;
+
+#if (NGX_HTTP_SSL || NGX_COMPAT)
+    void                           *ssl_session;
+    int                             ssl_session_len;
+>>>>>>> 32307cde8 (feat: complete nginx 1.28.3 core upgrade with full module compatibility)
+#endif
+
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
+    ngx_str_t                       dyn_host;
+#endif
+#endif
+#if (NGX_HTTP_UPSTREAM_CHECK)
+    ngx_uint_t                      check_index;
 #endif
 
     ngx_http_upstream_rr_peer_t    *next;
@@ -73,7 +104,7 @@ struct ngx_http_upstream_rr_peers_s {
 
     ngx_str_t                      *name;
 
-#if (NGX_DYUPS)
+#if (T_NGX_HTTP_DYUPS)
     ngx_uint_t                      init_number;
 #endif
 

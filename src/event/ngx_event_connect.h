@@ -71,6 +71,7 @@ struct ngx_peer_connection_s {
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     unsigned                         resolved:2;
 #endif
+
                                      /* ngx_connection_log_error_e */
     unsigned                         log_error:2;
 

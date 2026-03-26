@@ -23,6 +23,16 @@
 #endif
 
 
+#define NGX_PROCESS_SINGLE     0
+#define NGX_PROCESS_MASTER     1
+#define NGX_PROCESS_SIGNALLER  2
+#define NGX_PROCESS_WORKER     3
+#define NGX_PROCESS_HELPER     4
+#if (T_PIPES)
+#define NGX_PROCESS_PIPE       5
+#endif
+
+
 typedef struct {
     ngx_event_handler_pt       handler;
     char                      *name;
