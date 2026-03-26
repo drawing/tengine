@@ -42,11 +42,13 @@ static void ngx_http_upstream_rd_check_broken_connection(ngx_http_request_t *r);
 static void ngx_http_upstream_wr_check_broken_connection(ngx_http_request_t *r);
 static void ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
     ngx_event_t *ev);
-#if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
-static
-#endif
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
 void ngx_http_upstream_connect(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
+#else
+static void ngx_http_upstream_connect(ngx_http_request_t *r,
+    ngx_http_upstream_t *u);
+#endif
 static ngx_int_t ngx_http_upstream_reinit(ngx_http_request_t *r,
     ngx_http_upstream_t *u);
 static void ngx_http_upstream_send_request(ngx_http_request_t *r,
@@ -106,11 +108,13 @@ static void ngx_http_upstream_dummy_handler(ngx_http_request_t *r,
 static void ngx_http_upstream_next(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_uint_t ft_type);
 static void ngx_http_upstream_cleanup(void *data);
-#if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
-static
-#endif
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
 void ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_int_t rc);
+#else
+static void ngx_http_upstream_finalize_request(ngx_http_request_t *r,
+    ngx_http_upstream_t *u, ngx_int_t rc);
+#endif
 
 static ngx_int_t ngx_http_upstream_process_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
@@ -1595,14 +1599,11 @@ ngx_http_upstream_check_broken_connection(ngx_http_request_t *r,
 
 #if (T_NGX_MULTI_UPSTREAM)
 
-#include "ngx_http_multi_upstream.c"
-
-#endif /* T_NGX_MULTI_UPSTREAM */
-
-#if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
-static
-#endif
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
 void
+#else
+static void
+#endif
 ngx_http_upstream_connect(ngx_http_request_t *r, ngx_http_upstream_t *u)
 {
     ngx_int_t                  rc;
@@ -4740,10 +4741,11 @@ ngx_http_upstream_cleanup(void *data)
 }
 
 
-#if (!T_NGX_HTTP_DYNAMIC_RESOLVE)
-static
-#endif
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
 void
+#else
+static void
+#endif
 ngx_http_upstream_finalize_request(ngx_http_request_t *r,
     ngx_http_upstream_t *u, ngx_int_t rc)
 {

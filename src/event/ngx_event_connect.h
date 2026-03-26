@@ -39,8 +39,8 @@ struct ngx_peer_connection_s {
     struct sockaddr                 *sockaddr;
     socklen_t                        socklen;
     ngx_str_t                       *name;
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)    
-    ngx_str_t                       *host;
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
+    ngx_str_t                       *dyn_host;
 #endif
 
     ngx_uint_t                       tries;
@@ -71,7 +71,7 @@ struct ngx_peer_connection_s {
     unsigned                         so_keepalive:1;
     unsigned                         down:1;
 
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)    
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
     unsigned                         resolved:2;
 #endif
 
