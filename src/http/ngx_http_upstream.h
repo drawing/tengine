@@ -132,6 +132,9 @@ typedef struct {
 
 
 struct ngx_http_upstream_srv_conf_s {
+#if (NGX_HTTP_UPSTREAM_RBTREE)
+    ngx_rbtree_node_t                node;
+#endif
     ngx_http_upstream_peer_t         peer;
     void                           **srv_conf;
 
