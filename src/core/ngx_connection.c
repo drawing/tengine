@@ -430,11 +430,7 @@ ngx_open_listening_sockets(ngx_cycle_t *cycle)
         ls = cycle->listening.elts;
         for (i = 0; i < cycle->listening.nelts; i++) {
 
-            if (ls[i].ignore
-#if (T_NGX_HAVE_XUDP)
-                || ls[i].for_xudp
-#endif
-            ) {
+            if (ls[i].ignore) {
                 continue;
             }
 
@@ -731,12 +727,6 @@ ngx_configure_listening_sockets(ngx_cycle_t *cycle)
     for (i = 0; i < cycle->listening.nelts; i++) {
 
         ls[i].log = *ls[i].logp;
-
-#if (T_NGX_HAVE_XUDP)
-        if (ls[i].for_xudp) {
-            continue ;
-        }
-#endif
 
         if (ls[i].rcvbuf != -1) {
             if (setsockopt(ls[i].fd, SOL_SOCKET, SO_RCVBUF,
@@ -1109,10 +1099,6 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
     ngx_listening_t   *ls;
     ngx_connection_t  *c;
 
-#if (T_NGX_HAVE_XUDP)
-    ngx_xudp_terminate_xudp_binding(cycle);
-#endif
-
     if (ngx_event_flags & NGX_USE_IOCP_EVENT) {
         return;
     }
@@ -1122,6 +1108,12 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
 
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
+
+#if (NGX_QUIC)
+        if (ls[i].quic) {
+            continue;
+        }
+#endif
 
         c = ls[i].connection;
 
@@ -1134,14 +1126,6 @@ ngx_close_listening_sockets(ngx_cycle_t *cycle)
                      * for closed shared listening sockets unless
                      * the events was explicitly deleted
                      */
-#if (NGX_SSL && NGX_SSL_ASYNC)
-                    if (c->async_enable && ngx_del_async_conn) {
-                        if (c->num_async_fds) {
-                            ngx_del_async_conn(c, NGX_DISABLE_EVENT);
-                            c->num_async_fds--;
-                        }
-                    }
-#endif
 
                     ngx_del_event(c->read, NGX_READ_EVENT, 0);
 
@@ -1192,9 +1176,6 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 {
     ngx_uint_t         instance;
     ngx_event_t       *rev, *wev;
-#if (NGX_SSL && NGX_SSL_ASYNC)
-    ngx_event_t       *aev;
-#endif
     ngx_connection_t  *c;
 
     /* disable warning: Win32 SOCKET is u_int while UNIX socket is int */
@@ -1228,18 +1209,11 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 
     rev = c->read;
     wev = c->write;
-#if (NGX_SSL && NGX_SSL_ASYNC)
-    aev = c->async;
-#endif
 
     ngx_memzero(c, sizeof(ngx_connection_t));
 
     c->read = rev;
     c->write = wev;
-#if (NGX_SSL && NGX_SSL_ASYNC)
-    c->async = aev;
-#endif
-
     c->fd = s;
     c->log = log;
 
@@ -1247,32 +1221,17 @@ ngx_get_connection(ngx_socket_t s, ngx_log_t *log)
 
     ngx_memzero(rev, sizeof(ngx_event_t));
     ngx_memzero(wev, sizeof(ngx_event_t));
-#if (NGX_SSL && NGX_SSL_ASYNC)
-    ngx_memzero(aev, sizeof(ngx_event_t));
-#endif
 
     rev->instance = !instance;
     wev->instance = !instance;
-#if (NGX_SSL && NGX_SSL_ASYNC)
-    aev->instance = !instance;
-#endif
 
     rev->index = NGX_INVALID_INDEX;
     wev->index = NGX_INVALID_INDEX;
-#if (NGX_SSL && NGX_SSL_ASYNC)
-    aev->index = NGX_INVALID_INDEX;
-#endif
 
     rev->data = c;
     wev->data = c;
-#if (NGX_SSL && NGX_SSL_ASYNC)
-    aev->data = c;
-#endif
 
     wev->write = 1;
-#if (NGX_SSL && NGX_SSL_ASYNC)
-    aev->async = 1;
-#endif
 
     return c;
 }
@@ -1311,32 +1270,11 @@ ngx_close_connection(ngx_connection_t *c)
         ngx_del_timer(c->write);
     }
 
-#if (NGX_SSL && NGX_SSL_ASYNC)
-    if (c->async->timer_set) {
-        ngx_del_timer(c->async);
-    }
-
-    if (c->async_enable && ngx_del_async_conn) {
-        if (c->num_async_fds) {
-            ngx_del_async_conn(c, NGX_DISABLE_EVENT);
-            c->num_async_fds--;
-        }
-    }
-#endif
-
     if (!c->shared) {
         if (ngx_del_conn) {
             ngx_del_conn(c, NGX_CLOSE_EVENT);
 
         } else {
-#if (NGX_SSL && NGX_SSL_ASYNC)
-            if (c->async_enable && ngx_del_async_conn) {
-                if (c->num_async_fds) {
-                    ngx_del_async_conn(c, NGX_DISABLE_EVENT);
-                    c->num_async_fds--;
-                }
-            }
-#endif
             if (c->read->active || c->read->disabled) {
                 ngx_del_event(c->read, NGX_READ_EVENT, NGX_CLOSE_EVENT);
             }
@@ -1355,17 +1293,8 @@ ngx_close_connection(ngx_connection_t *c)
         ngx_delete_posted_event(c->write);
     }
 
-#if (NGX_SSL && NGX_SSL_ASYNC)
-    if (c->async->posted) {
-        ngx_delete_posted_event(c->async);
-    }
-#endif
-
     c->read->closed = 1;
     c->write->closed = 1;
-#if (NGX_SSL && NGX_SSL_ASYNC)
-    c->async->closed = 1;
-#endif
 
     ngx_reusable_connection(c, 0);
 
@@ -1375,9 +1304,6 @@ ngx_close_connection(ngx_connection_t *c)
 
     fd = c->fd;
     c->fd = (ngx_socket_t) -1;
-#if (NGX_SSL && NGX_SSL_ASYNC)
-    c->async_fd = (ngx_socket_t) -1;
-#endif
 
     if (c->shared) {
         return;
@@ -1657,6 +1583,10 @@ ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
     }
 #endif
 
+    if (err == NGX_EMSGSIZE && c->log_error == NGX_ERROR_IGNORE_EMSGSIZE) {
+        return 0;
+    }
+
     if (err == 0
         || err == NGX_ECONNRESET
 #if (NGX_WIN32)
@@ -1674,6 +1604,7 @@ ngx_connection_error(ngx_connection_t *c, ngx_err_t err, char *text)
     {
         switch (c->log_error) {
 
+        case NGX_ERROR_IGNORE_EMSGSIZE:
         case NGX_ERROR_IGNORE_EINVAL:
         case NGX_ERROR_IGNORE_ECONNRESET:
         case NGX_ERROR_INFO:
