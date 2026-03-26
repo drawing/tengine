@@ -18,12 +18,6 @@
 #define NGX_CMD_QUIT           3
 #define NGX_CMD_TERMINATE      4
 #define NGX_CMD_REOPEN         5
-#if (T_PIPES)
-#define NGX_CMD_PIPE_BROKEN    6
-#endif
-#if (T_NGX_HAVE_XUDP)
-#define NGX_CMD_UNBIND_XDP     7
-#endif
 
 
 #define NGX_PROCESS_SINGLE     0
@@ -44,6 +38,7 @@
 #endif
 
 
+
 typedef struct {
     ngx_event_handler_pt       handler;
     char                      *name;
@@ -54,9 +49,6 @@ typedef struct {
 void ngx_master_process_cycle(ngx_cycle_t *cycle);
 void ngx_single_process_cycle(ngx_cycle_t *cycle);
 
-#if (T_NGX_HAVE_XUDP)
-void ngx_xudp_signal_worker_process(ngx_cycle_t *cycle);
-#endif
 
 extern ngx_uint_t      ngx_process;
 extern ngx_uint_t      ngx_worker;
