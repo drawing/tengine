@@ -93,9 +93,8 @@ static ngx_stream_variable_t  ngx_stream_core_variables[] = {
     { ngx_string("server_port"), NULL,
       ngx_stream_variable_server_port, 0, 0, 0 },
 
-    { ngx_string("server_name"), NULL,
-
->>>>>>> ac2915d76 (fix: nginx 1.28.3 upgrade fixes - version, stream variables, and test compatibility)
+    { ngx_string("server_name"), NULL, ngx_stream_variable_server_name,
+      0, 0, 0 },
     { ngx_string("bytes_sent"), NULL, ngx_stream_variable_bytes,
       0, 0, 0 },
 
