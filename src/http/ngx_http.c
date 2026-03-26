@@ -79,6 +79,9 @@ ngx_uint_t   ngx_http_max_module;
 ngx_http_output_header_filter_pt  ngx_http_top_header_filter;
 ngx_http_output_body_filter_pt    ngx_http_top_body_filter;
 ngx_http_request_body_filter_pt   ngx_http_top_request_body_filter;
+#if (T_NGX_INPUT_BODY_FILTER)
+ngx_http_input_body_filter_pt     ngx_http_top_input_body_filter;
+#endif
 
 #if (T_NGX_INPUT_BODY_FILTER)
 ngx_int_t  (*ngx_http_top_input_body_filter) (ngx_http_request_t *r,
