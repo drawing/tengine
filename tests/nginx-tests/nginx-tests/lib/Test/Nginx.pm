@@ -9,10 +9,6 @@ package Test::Nginx;
 use warnings;
 use strict;
 
-# Ensure lua-resty-core is findable in local installation
-$ENV{LUA_PATH} = '/home/bo.deng/local/lib/lua/?.lua;/home/bo.deng/local/lib/lua/?/init.lua;;'
-    unless defined $ENV{LUA_PATH};
-
 use base qw/ Exporter /;
 
 our @EXPORT = qw/ log_in log_out http http_get http_head port /;
@@ -52,8 +48,6 @@ sub new {
 	)
 		or die "Can't create temp directory: $!\n";
 	$self->{_testdir} =~ s!\\!/!g if $^O eq 'MSWin32';
-	mkdir "$self->{_testdir}/logs"
-		or die "Can't create logs directory: $!\n";
 
 	Test::More::BAIL_OUT("no $NGINX binary found")
 		unless -x $NGINX;
@@ -74,10 +68,6 @@ sub DESTROY {
 		local $Test::Nginx::TODO = 'alerts' unless $self->{_alerts};
 
 		my @alerts = $self->read_file('error.log') =~ /.+\[alert\].+/gm;
-		if (not $ENV{TEST_NGINX_FORCE_ALERTS}) {
-			# Filter out lua-resty-core module loading alerts (non-fatal)
-			@alerts = grep { $_ !~ /resty\.core/ } @alerts;
-		}
 
 		if ($^O eq 'solaris') {
 			$Test::Nginx::TODO = 'alerts' if @alerts
@@ -147,9 +137,9 @@ sub has_module($) {
 		rewrite	=> '(?s)^(?!.*--without-http_rewrite_module)',
 		proxy	=> '(?s)^(?!.*--without-http_proxy_module)',
 		fastcgi	=> '(?s)^(?!.*--without-http_fastcgi_module)',
-		uwsgi	=> '--with-http_uwsgi_module',
-		scgi	=> '--with-http_scgi_module',
-		grpc	=> '--with-http_grpc_module',
+		uwsgi	=> '(?s)^(?!.*--without-http_uwsgi_module)',
+		scgi	=> '(?s)^(?!.*--without-http_scgi_module)',
+		grpc	=> '(?s)^(?!.*--without-http_grpc_module)',
 		memcached
 			=> '(?s)^(?!.*--without-http_memcached_module)',
 		limit_conn
@@ -171,6 +161,8 @@ sub has_module($) {
 			=> '(?s)^(?!.*--without-http_upstream_keepalive_modu)',
 		upstream_zone
 			=> '(?s)^(?!.*--without-http_upstream_zone_module)',
+		upstream_sticky
+			=> '(?s)^(?!.*--without-http_upstream_sticky)',
 		http	=> '(?s)^(?!.*--without-http(?!\S))',
 		cache	=> '(?s)^(?!.*--without-http-cache)',
 		pop3	=> '(?s)^(?!.*--without-mail_pop3_module)',
@@ -188,6 +180,8 @@ sub has_module($) {
 			=> '(?s)^(?!.*--without-stream_limit_conn_module)',
 		stream_map
 			=> '(?s)^(?!.*--without-stream_map_module)',
+		stream_pass
+			=> '(?s)^(?!.*--without-stream_pass_module)',
 		stream_return
 			=> '(?s)^(?!.*--without-stream_return_module)',
 		stream_set
@@ -276,20 +270,22 @@ sub has_feature($) {
 		return 0;
 	}
 
-	if ($feature =~ /^(openssl|libressl):([0-9.]+)/) {
+	if ($feature =~ /^(openssl|libressl):([0-9.]+)([a-z]*)/) {
 		my $library = $1;
 		my $need = $2;
+		my $patch = $3;
 
 		$self->{_configure_args} = `$NGINX -V 2>&1`
 			if !defined $self->{_configure_args};
 
 		return 0 unless
-			$self->{_configure_args} =~ /with $library ([0-9.]+)/i;
+			$self->{_configure_args}
+			=~ /with $library ([0-9.]+)([a-z]*)/i;
 
-		my @v = split(/\./, $1);
+		my @v = (split(/\./, $1), unpack("C*", $2));
 		my ($n, $v);
 
-		for $n (split(/\./, $need)) {
+		for $n (split(/\./, $need), unpack("C*", $patch)) {
 			$v = shift @v || 0;
 			return 0 if $n > $v;
 			return 1 if $v > $n;
@@ -754,8 +750,7 @@ sub test_globals_perl5lib() {
 	$objs =~ s!\\!/!g if $^O eq 'MSWin32';
 
 	return "env PERL5LIB=$objs/src/http/modules/perl:"
-		. "$objs/src/http/modules/perl/blib/arch;\n"
-		. "env LUA_PATH=/home/bo.deng/local/lib/lua/?.lua;/home/bo.deng/local/lib/lua/?/init.lua;;\n";
+		. "$objs/src/http/modules/perl/blib/arch;\n";
 }
 
 sub test_globals_http() {
@@ -769,8 +764,6 @@ sub test_globals_http() {
 	$s .= "root $self->{_testdir};\n";
 	$s .= "access_log $self->{_testdir}/access.log;\n";
 	$s .= "client_body_temp_path $self->{_testdir}/client_body_temp;\n";
-	$s .= "lua_package_path \"/home/bo.deng/local/share/lua/5.1/?.lua;/usr/local/lib/lua/?.lua;;\";\n"
-		if $self->has_module('lua');
 
 	$s .= "fastcgi_temp_path $self->{_testdir}/fastcgi_temp;\n"
 		if $self->has_module('fastcgi');
@@ -866,6 +859,7 @@ sub http_start($;%) {
 	my $s;
 
 	my $port = $extra{SSL} ? 8443 : 8080;
+
 	eval {
 		local $SIG{ALRM} = sub { die "timeout\n" };
 		local $SIG{PIPE} = sub { die "sigpipe\n" };
@@ -877,6 +871,7 @@ sub http_start($;%) {
 			%extra
 		)
 			or die "Can't connect to nginx: $!\n";
+
 		if ($extra{SSL}) {
 			require IO::Socket::SSL;
 			IO::Socket::SSL->start_SSL(
@@ -886,8 +881,12 @@ sub http_start($;%) {
 				%extra
 			)
 				or die $IO::Socket::SSL::SSL_ERROR . "\n";
-			log_in("ssl cipher: " . $s->get_cipher());
-			log_in("ssl cert: " . $s->peer_certificate('issuer'));
+
+			if (!defined $extra{SSL_startHandshake}) {
+				log_in("ssl cipher: " . $s->get_cipher());
+				log_in("ssl cert: "
+					. $s->peer_certificate('issuer'));
+			}
 		}
 
 		log_out($request);
@@ -923,6 +922,7 @@ sub http_end($;%) {
 
 		local $/;
 		$reply = $s->getline();
+
 		$s->close();
 
 		alarm(0);
