@@ -34,6 +34,9 @@
 #if (T_PIPES)
 #define NGX_PROCESS_PIPE       5
 #endif
+#if (NGX_PROCS)
+#define NGX_PROCESS_PROC       6
+#endif
 
 #if (NGX_PROCS)
 #define NGX_PROCESS_PROC       5
