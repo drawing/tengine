@@ -78,63 +78,9 @@ typedef struct {
     ngx_rbtree_t                     rbtree;
     ngx_rbtree_node_t                sentinel;
 #endif
-} ngx_http_upstream_main_conf_t;
-
-typedef struct ngx_http_upstream_srv_conf_s  ngx_http_upstream_srv_conf_t;
-
-typedef ngx_int_t (*ngx_http_upstream_init_pt)(ngx_conf_t *cf,
-    ngx_http_upstream_srv_conf_t *us);
-typedef ngx_int_t (*ngx_http_upstream_init_peer_pt)(ngx_http_request_t *r,
-    ngx_http_upstream_srv_conf_t *us);
-
-
-typedef struct {
-    ngx_http_upstream_init_pt        init_upstream;
-    ngx_http_upstream_init_peer_pt   init;
-    void                            *data;
-} ngx_http_upstream_peer_t;
-
-
-typedef struct {
-    ngx_str_t                        name;
-    ngx_addr_t                      *addrs;
-    ngx_uint_t                       naddrs;
-    ngx_uint_t                       weight;
-    ngx_uint_t                       max_conns;
-    ngx_uint_t                       max_fails;
-    time_t                           fail_timeout;
-    ngx_msec_t                       slow_start;
-    ngx_uint_t                       down;
-
-    unsigned                         backup:1;
-
-#if (NGX_HTTP_UPSTREAM_ZONE)
-    ngx_str_t                        host;
-    ngx_str_t                        service;
-#endif
-
-    NGX_COMPAT_BEGIN(2)
-    NGX_COMPAT_END
-} ngx_http_upstream_server_t;
-
-
-#define NGX_HTTP_UPSTREAM_CREATE        0x0001
-#define NGX_HTTP_UPSTREAM_WEIGHT        0x0002
-#define NGX_HTTP_UPSTREAM_MAX_FAILS     0x0004
-#define NGX_HTTP_UPSTREAM_FAIL_TIMEOUT  0x0008
-#define NGX_HTTP_UPSTREAM_DOWN          0x0010
-#define NGX_HTTP_UPSTREAM_BACKUP        0x0020
-#define NGX_HTTP_UPSTREAM_MODIFY        0x0040
-#define NGX_HTTP_UPSTREAM_MAX_CONNS     0x0100
-#if (T_NGX_HTTP_UPSTREAM_ID)
-#define NGX_HTTP_UPSTREAM_ID            0x0200
-#endif
 
 
 struct ngx_http_upstream_srv_conf_s {
-#if (NGX_HTTP_UPSTREAM_RBTREE)
-    ngx_rbtree_node_t                node;
-#endif
     ngx_http_upstream_peer_t         peer;
     void                           **srv_conf;
 
