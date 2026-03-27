@@ -9,3 +9,6 @@ tests/nginx-tests/tengine-tests/lib
 tests/nginx-tests/tengine-tests/test_session
 tests/nginx-tests/tengine-tests/tp_localhost
 tests/nginx-tests/tengine-tests/xqc_token
+
+# Test state
+tests/nginx-tests/nginx-tests/.prove
