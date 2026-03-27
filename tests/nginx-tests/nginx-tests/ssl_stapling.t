@@ -259,6 +259,8 @@ ok(!staple(8443, 'RSA'), 'staple revoked');
 TODO: {
 local $TODO = 'broken TLSv1.3 sigalgs in LibreSSL'
 	if $t->has_module('LibreSSL') && test_tls13();
+
+# nginx 1.28.3+: OCSP stapling success may vary
 ok(staple(8443, 'ECDSA'), 'staple success');
 
 }
@@ -271,6 +273,7 @@ ok(staple(8444, 'ECDSA'), 'responder success');
 }
 ok(!staple(8445, 'ECDSA'), 'verify - root not trusted');
 
+# nginx 1.28.3+: cert store OCSP may vary
 ok(staple(8446, 'ECDSA', "$d/int.crt"), 'cert store');
 }
 
