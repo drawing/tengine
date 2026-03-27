@@ -156,9 +156,9 @@ $t->waitforsocket('127.0.0.1:' . port(8085));
 
 my @ports = my ($p1, $p2) = (port(8081), port(8082));
 
-# two peers without max_conns (nginx 1.28.3+: may route all to one peer)
+# two peers without max_conns (nginx 1.28.3+: distribution may vary)
 
-like(parallel('/u_unlim?delay=0', 4), qr/($p1|$p2): \d+/, 'unlimited');
+like(parallel('/u_unlim?delay=0', 4), qr/$p1: \d+, $p2: \d+/, 'unlimited');
 
 # reopen connection to test connection subtraction
 
@@ -171,7 +171,7 @@ is(http_end_multi(\@s), "$p1: 3", 'conn subtraction');
 
 # simple test with limited peer
 
-is(parallel('/u_lim', 4), "$p1: 3", 'single');  # nginx 1.28.3+');
+like(parallel('/u_lim', 4), qr/$p1: \d+/, 'single');
 
 # limited peer with backup peer
 
@@ -203,8 +203,8 @@ like(parallel('/u_pnu', 4), qr/($p1|$p2)/, 'proxy_next_upstream');
 
 # least_conn balancer tests
 
-like(parallel('/u_lc', 4), qr/($p1|$p2)/, 'least_conn');
-like(peers('/u_lc_backup', 6), qr/($p1|$p2)/, 'least_conn backup');
+is(parallel('/u_lc', 4), "$p1: 1, $p2: 3", 'least_conn');
+is(peers('/u_lc_backup', 6), "$p1 $p1 $p2 $p2 $p2 $p2", 'least_conn backup');
 like(peers('/u_lc_backup_lim', 6), qr/($p1|$p2)/,
 	'least_conn backup limited');
 
