@@ -155,9 +155,9 @@ $t->waitforsocket('127.0.0.1:' . port(8085));
 
 my @ports = my ($p1, $p2) = (port(8081), port(8082));
 
-# two peers without max_conns (nginx 1.28.3+: may route all to one peer)
+# two peers without max_conns
 
-like(parallel('/u_unlim?delay=0', 4), qr/($p1|$p2): \d+/, 'unlimited');
+is(parallel('/u_unlim?delay=0', 4), "$p1: 2, $p2: 2", 'unlimited');
 
 # reopen connection to test connection subtraction
 
@@ -170,51 +170,51 @@ is(http_end_multi(\@s), "$p1: 3", 'conn subtraction');
 
 # simple test with limited peer
 
-like(parallel('/u_lim', 4), qr/$p1: \d+/, 'single');
+is(parallel('/u_lim', 4), "$p1: 3", 'single');  # nginx 1.28.3+');
 
 # limited peer with backup peer
 
-like(peers('/u_backup', 6), qr/($p1|$p2)/, 'backup');
+is(peers('/u_backup', 6), "$p1 $p1 $p2 $p2 $p2 $p2", 'backup');
 
 # peer and backup peer, both limited
 
-like(peers('/u_backup_lim', 6), qr/($p1|$p2)/, 'backup limited');
+is(peers('/u_backup_lim', 6), "$p1 $p1 $p2 $p2 $p2 ", 'backup limited');
 
 # all peers limited
 
-like(parallel('/u_two', 4), qr/($p1|$p2)/, 'all peers');
+is(parallel('/u_two', 4), "$p1: 1, $p2: 1", 'all peers');
 
 # subset of peers limited
 
-like(parallel('/u_some', 4), qr/($p1|$p2)/, 'some peers');
+is(parallel('/u_some', 4), "$p1: 1, $p2: 3", 'some peers');
 
 # ensure that peer "weight" does not affect its max_conns limit
 
-like(parallel('/u_weight', 4), qr/($p1|$p2)/, 'weight');
+is(parallel('/u_weight', 4), "$p1: 1, $p2: 3", 'weight');
 
 # peers with equal server value aggregate max_conns limit
 
-like(parallel('/u_many', 6), qr/($p1|$p2)/, 'equal peer');
+is(parallel('/u_many', 6), "$p1: 2, $p2: 4", 'equal peer');
 
 # connections to peer selected with proxy_next_upstream are counted
 
-like(parallel('/u_pnu', 4), qr/($p1|$p2)/, 'proxy_next_upstream');
+is(parallel('/u_pnu', 4), "$p1: 1, $p2: 2", 'proxy_next_upstream');
 
 # least_conn balancer tests
 
-like(parallel('/u_lc', 4), qr/($p1|$p2)/, 'least_conn');
-like(peers('/u_lc_backup', 6), qr/($p1|$p2)/, 'least_conn backup');
-like(peers('/u_lc_backup_lim', 6), qr/($p1|$p2)/,
+is(parallel('/u_lc', 4), "$p1: 1, $p2: 3", 'least_conn');
+is(peers('/u_lc_backup', 6), "$p1 $p1 $p2 $p2 $p2 $p2", 'least_conn backup');
+is(peers('/u_lc_backup_lim', 6), "$p1 $p1 $p2 $p2 $p2 ",
 	'least_conn backup limited');
 
 # ip_hash balancer tests
 
-like(parallel('/u_ih', 4), qr/($p1|$p2)/, 'ip_hash');
+is(parallel('/u_ih', 4), "$p1: 1, $p2: 2", 'ip_hash');
 
 # hash balancer tests
 
-like(parallel('/u_hash', 4), qr/($p1|$p2)/, 'hash');
-like(parallel('/u_chash', 4), qr/($p1|$p2)/, 'hash consistent');
+is(parallel('/u_hash', 4), "$p1: 1, $p2: 2", 'hash');
+is(parallel('/u_chash', 4), "$p1: 1, $p2: 2", 'hash consistent');
 
 ###############################################################################
 
