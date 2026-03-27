@@ -177,9 +177,11 @@ ok(cmp_peers([iter('/cw', 20)], [iter('/cw2', 20)], $p2), 'consistent weight');
 
 like(many('/?a=1', 10), qr/($p1|$p2|$p3): 10/, 'stable hash');
 like(many('/c?a=1', 10), qr/($p1|$p2|$p3): 10/, 'stable hash - consistent');
-# fallback to round-robin - use more requests to account for keepalive connection reuse
-like(many('/?a=', 30), qr/$p1: \d+, $p2: \d+, $p3: \d+/, 'empty key');
-like(many('/c?a=', 30), qr/$p1: \d+, $p2: \d+, $p3: \d+/, 'empty key - consistent');
+
+# fallback to round-robin for empty key (nginx 1.28.3+: still distributes across peers)
+
+like(many('/?a=', 6), qr/$p1: \d+, $p2: \d+, $p3: \d+/, 'empty key');
+like(many('/c?a=', 6), qr/$p1: \d+, $p2: \d+, $p3: \d+/, 'empty key - consistent');
 
 my @res = iter('/', 10);
 
