@@ -200,7 +200,6 @@ is(@res, 20, 'all hashed peers - bad');
 
 @res = grep { $_ == $p1 } iter('/cbad', 20);
 is(@res, 20, 'all hashed peers - bad consistent');
-
 # nginx 1.28.3 changed $upstream_addr format to show IP:port instead of upstream name
 like(http_get('/busy'), qr/X-IP: 127\.0\.0\.1:\d+, 127\.0\.0\.1:\d+/,
 	'upstream name - busy');
