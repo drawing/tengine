@@ -24,13 +24,10 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http rewrite http_v2 grpc/)
-	->has(qw/upstream_keepalive http_ssl/)
-	->has_daemon('openssl');
+	->has(qw/upstream_keepalive http_ssl openssl:1.0.2/)
+	->has_daemon('openssl')
 
-plan(skip_all => 'no ALPN support in OpenSSL')
-	if $t->has_module('OpenSSL') and not $t->has_feature('openssl:1.0.2');
-
-$t->write_file_expand('nginx.conf', <<'EOF')->plan(38);
+	->write_file_expand('nginx.conf', <<'EOF')->plan(38);
 
 %%TEST_GLOBALS%%
 
@@ -48,17 +45,16 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8081 ssl;
+        listen       127.0.0.1:8081 http2 ssl;
         server_name  localhost;
-
-        http2 on;
-        http2_body_preread_size 128k;
 
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;
 
         ssl_verify_client optional;
         ssl_client_certificate client.crt;
+
+        http2_body_preread_size 128k;
 
         location / {
             grpc_pass 127.0.0.1:8082;
@@ -67,10 +63,9 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8080;
+        listen       127.0.0.1:8080 http2;
         server_name  localhost;
 
-        http2 on;
         http2_body_preread_size 128k;
 
         location / {
@@ -133,7 +128,11 @@ foreach my $name ('client') {
 sleep 1 if $^O eq 'MSWin32';
 
 $t->write_file('password', 'client');
+
+# suppress deprecation warning
+open OLDERR, ">&", \*STDERR; close STDERR;
 $t->run();
+open STDERR, ">&", \*OLDERR;
 
 ###############################################################################
 

@@ -177,7 +177,6 @@ GET /api?uid=32
 --- response_body
 Logged in 56
 --- timeout: 3
---- skip_eval: 2:$ENV{TEST_NGINX_USE_HTTP3}
 
 
 
@@ -244,7 +243,6 @@ ngx.var.uid = res[1].uid;
 GET /api?uid=32
 --- response_body
 Logged in 56
---- skip_eval: 2:$ENV{TEST_NGINX_USE_HTTP3}
 
 
 
@@ -322,7 +320,6 @@ ngx.var.uid = res[1].uid;
 GET /api?uid=32
 --- response_body
 Logged in 56
---- skip_eval: 2:$ENV{TEST_NGINX_USE_HTTP3}
 
 
 

@@ -176,7 +176,6 @@ received: OK
 
 
 === TEST 3: upstream sockets close prematurely
---- no_http3
 --- http_config eval
     "lua_package_path '$::HtmlDir/?.lua;./?.lua;;';"
 --- config
@@ -254,7 +253,6 @@ done
 
 
 === TEST 4: http keepalive
---- no_http3
 --- http_config eval
     "lua_package_path '$::HtmlDir/?.lua;./?.lua;;';"
 --- config
@@ -332,7 +330,6 @@ done
 
 
 === TEST 5: lua_socket_keepalive_timeout
---- quic_max_idle_timeout: 1.1
 --- config
    server_tokens off;
    location /t {
@@ -412,7 +409,6 @@ qr/lua tcp socket connection pool size: 30\b/]
 
 
 === TEST 6: lua_socket_pool_size
---- quic_max_idle_timeout: 1.1
 --- config
    server_tokens off;
    location /t {
@@ -493,7 +489,6 @@ qr/lua tcp socket connection pool size: 1\b/]
 
 
 === TEST 7: "lua_socket_keepalive_timeout 0" means unlimited
---- quic_max_idle_timeout: 1.2
 --- config
    server_tokens off;
    location /t {
@@ -576,7 +571,6 @@ lua tcp socket keepalive timeout: unlimited
 
 
 === TEST 8: setkeepalive(timeout) overrides lua_socket_keepalive_timeout
---- quic_max_idle_timeout: 1.1
 --- config
    server_tokens off;
    location /t {
@@ -656,7 +650,6 @@ qr/lua tcp socket connection pool size: 30\b/]
 
 
 === TEST 9: sock:setkeepalive(timeout, size) overrides lua_socket_pool_size
---- quic_max_idle_timeout: 1.1
 --- config
    server_tokens off;
    location /t {
@@ -737,7 +730,6 @@ qr/lua tcp socket connection pool size: 25\b/]
 
 
 === TEST 10: sock:keepalive_timeout(0) means unlimited
---- quic_max_idle_timeout: 1.1
 --- config
    server_tokens off;
    location /t {

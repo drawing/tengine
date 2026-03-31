@@ -224,7 +224,6 @@ registered timer
 
 
 === TEST 6: memory leak check
---- quic_max_idle_timeout: 8
 --- config
     location /t {
         content_by_lua_block {

@@ -55,32 +55,48 @@ $t->run();
 
 ###############################################################################
 
-like(http_put_chunked('/file', '1234567890'),
-	qr/201 Created.*(Content-Length|\x0d\0a0\x0d\x0a)/ms, 'put chunked');
-is($t->read_file('file'), '1234567890', 'put content');
+my $r;
 
-like(http_put_chunked('/file', ''), qr/204 No Content/, 'put chunked empty');
-is($t->read_file('file'), '', 'put empty content');
-
-like(http_put_chunked('/file', '1234567890', 1024),
-	qr/204 No Content/, 'put chunked big');
-is($t->read_file('file'), '1234567890' x 1024, 'put big content');
-
-###############################################################################
-
-sub http_put_chunked {
-	my ($url, $body, $count) = @_;
-	my $length = sprintf("%x", length $body);
-	$body = $length ? $length . CRLF . $body . CRLF : '';
-	$body x= ($count || 1);
-	$body .= '0' . CRLF . CRLF;
-	return http(<<EOF . $body);
-PUT $url HTTP/1.1
+$r = http(<<EOF);
+PUT /file HTTP/1.1
 Host: localhost
 Connection: close
 Transfer-Encoding: chunked
 
+a
+1234567890
+0
+
 EOF
-}
+
+like($r, qr/201 Created.*(Content-Length|\x0d\0a0\x0d\x0a)/ms, 'put chunked');
+is($t->read_file('file'), '1234567890', 'put content');
+
+$r = http(<<EOF);
+PUT /file HTTP/1.1
+Host: localhost
+Connection: close
+Transfer-Encoding: chunked
+
+0
+
+EOF
+
+like($r, qr/204 No Content/, 'put chunked empty');
+is($t->read_file('file'), '', 'put empty content');
+
+my $body = ('a' . CRLF . '1234567890' . CRLF) x 1024 . '0' . CRLF . CRLF;
+
+$r = http(<<EOF);
+PUT /file HTTP/1.1
+Host: localhost
+Connection: close
+Transfer-Encoding: chunked
+
+$body
+EOF
+
+like($r, qr/204 No Content/, 'put chunked big');
+is($t->read_file('file'), '1234567890' x 1024, 'put big content');
 
 ###############################################################################
