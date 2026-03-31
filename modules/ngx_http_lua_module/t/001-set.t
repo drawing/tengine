@@ -389,8 +389,8 @@ GET /lua
 GET /lua
 --- response_body_like: 500 Internal Server Error
 --- error_code: 500
---- error_log eval
-qr/(?:API disabled in the context of set_by_lua\*|http3 requests are not supported without content-length header)/ms
+--- error_log
+API disabled in the context of set_by_lua*
 
 
 
@@ -404,16 +404,8 @@ qr/(?:API disabled in the context of set_by_lua\*|http3 requests are not support
 GET /lua
 --- response_body_like: 500 Internal Server Error
 --- error_code: 500
---- error_log eval
-my $err_log;
-
-if (defined $ENV{TEST_NGINX_USE_HTTP3}) {
-    $err_log = "http v3 not supported yet";
-} else {
-    $err_log = "API disabled in the context of set_by_lua*";
-}
-
-$err_log;
+--- error_log
+API disabled in the context of set_by_lua*
 
 
 

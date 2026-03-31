@@ -29,6 +29,7 @@ my $t = Test::Nginx->new()->has(qw/stream udp/)->plan(8)
 %%TEST_GLOBALS%%
 
 daemon off;
+worker_processes 1;
 
 events {
 }
