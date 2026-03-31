@@ -40,7 +40,6 @@ __DATA__
     server_tokens off;
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -116,7 +115,6 @@ ssl_session_store_by_lua\(nginx\.conf:25\):1: ssl session store by lua is runnin
     server_tokens off;
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -192,7 +190,6 @@ API disabled in the context of ssl_session_store_by_lua*
     server_tokens off;
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -285,7 +282,6 @@ my timer run!
     server_tokens off;
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -355,7 +351,6 @@ API disabled in the context of ssl_session_store_by_lua*
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
     lua_ssl_verify_depth 3;
-    lua_ssl_protocols TLSv1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -428,7 +423,6 @@ ngx.exit does not yield and the error code is eaten.
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
     lua_ssl_verify_depth 3;
-    lua_ssl_protocols TLSv1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -502,7 +496,6 @@ ssl_session_store_by_lua*: handler return value: 0, sess new cb exit code: 0
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
     lua_ssl_verify_depth 3;
-    lua_ssl_protocols TLSv1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -571,7 +564,6 @@ should never reached here
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
     lua_ssl_verify_depth 3;
-    lua_ssl_protocols TLSv1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -642,7 +634,6 @@ get_phase: ssl_session_store
     server_tokens off;
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -712,7 +703,6 @@ qr/elapsed in ssl cert by lua: 0.(?:09|1[01])\d+,/,
     server_tokens off;
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -794,7 +784,6 @@ a.lua:1: ssl store session by lua is running!
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
     lua_ssl_verify_depth 3;
-    lua_ssl_protocols TLSv1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -865,7 +854,6 @@ qr/\[emerg\] .*? "ssl_session_store_by_lua_block" directive is not allowed here 
     server_tokens off;
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -975,4 +963,3 @@ qr/ssl_session_store_by_lua\*: skipped since TLS version >= 1\.3 \(\d+\)/
 [error]
 [alert]
 [emerg]
---- skip_eval: 6:$ENV{TEST_NGINX_USE_HTTP3}

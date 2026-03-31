@@ -166,7 +166,6 @@ ok
 
 
 === TEST 8: content_by_lua_block (cosockets)
---- no_http2
 --- config
     server_tokens off;
     location = /t {

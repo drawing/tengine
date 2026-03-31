@@ -198,6 +198,9 @@ ngx_http_lua_shdict_lookup(ngx_shm_zone_t *shm_zone, ngx_uint_t hash,
         rc = ngx_memn2cmp(kdata, sd->data, klen, (size_t) sd->key_len);
 
         if (rc == 0) {
+            ngx_queue_remove(&sd->queue);
+            ngx_queue_insert_head(&ctx->sh->lru_queue, &sd->queue);
+
             *sdp = sd;
 
             dd("node expires: %lld", (long long) sd->expires);
@@ -210,14 +213,11 @@ ngx_http_lua_shdict_lookup(ngx_shm_zone_t *shm_zone, ngx_uint_t hash,
 
                 dd("time to live: %lld", (long long) ms);
 
-                if (ms <= 0) {
+                if (ms < 0) {
                     dd("node already expired");
                     return NGX_DONE;
                 }
             }
-
-            ngx_queue_remove(&sd->queue);
-            ngx_queue_insert_head(&ctx->sh->lru_queue, &sd->queue);
 
             return NGX_OK;
         }
@@ -654,7 +654,7 @@ ngx_http_lua_shared_dict_get(ngx_shm_zone_t *zone, u_char *key_data,
             return NGX_ERROR;
         }
 
-        ngx_memcpy(&value->value.n, data, len);
+        ngx_memcpy(&value->value.b, data, len);
         break;
 
     case SHDICT_TBOOLEAN:

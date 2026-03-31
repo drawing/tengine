@@ -21,9 +21,26 @@
 #if (T_PIPES)
 #define NGX_CMD_PIPE_BROKEN    6
 #endif
+#if (T_NGX_HAVE_XUDP)
+#define NGX_CMD_UNBIND_XDP     7
+#endif
 
 
-typedef struct {
+#define NGX_PROCESS_SINGLE     0
+#define NGX_PROCESS_MASTER     1
+#define NGX_PROCESS_SIGNALLER  2
+#define NGX_PROCESS_WORKER     3
+#define NGX_PROCESS_HELPER     4
+
+#if (NGX_PROCS)
+#define NGX_PROCESS_PROC       5
+#endif
+
+#if (T_PIPES)
+#define NGX_PROCESS_PIPE       6
+#endif
+
+
     ngx_event_handler_pt       handler;
     char                      *name;
     ngx_msec_t                 delay;
@@ -33,6 +50,9 @@ typedef struct {
 void ngx_master_process_cycle(ngx_cycle_t *cycle);
 void ngx_single_process_cycle(ngx_cycle_t *cycle);
 
+#if (T_NGX_HAVE_XUDP)
+void ngx_xudp_signal_worker_process(ngx_cycle_t *cycle);
+#endif
 
 extern ngx_uint_t      ngx_process;
 extern ngx_uint_t      ngx_worker;
