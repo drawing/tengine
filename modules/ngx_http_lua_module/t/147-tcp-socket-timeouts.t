@@ -17,7 +17,6 @@ BEGIN {
     }
 
     $ENV{TEST_NGINX_EVENT_TYPE} = 'poll';
-    delete($ENV{TEST_NGINX_USE_HTTP2});
     $ENV{MOCKEAGAIN_WRITE_TIMEOUT_PATTERN} = 'slowdata';
 }
 

@@ -22,6 +22,7 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
+
 my $t = Test::Nginx->new()->has(qw/http http_ssl proxy upstream_keepalive/)
 	->has_daemon('openssl')->plan(3)
 	->write_file_expand('nginx.conf', <<'EOF');
@@ -29,6 +30,7 @@ my $t = Test::Nginx->new()->has(qw/http http_ssl proxy upstream_keepalive/)
 %%TEST_GLOBALS%%
 
 daemon off;
+worker_processes 1;
 
 events {
 }

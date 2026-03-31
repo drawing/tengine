@@ -22,9 +22,12 @@ use Test::Nginx qw/ :DEFAULT http_end /;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
+
 my $t = Test::Nginx->new()
 	->has(qw/http http_ssl openssl:1.0.2 socket_ssl_reused/)
 	->has_daemon('openssl');
+
+plan(skip_all => 'no ssl_conf_command') if $t->has_module('BoringSSL');
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -78,7 +81,7 @@ foreach my $name ('localhost', 'override') {
 		or die "Can't create certificate for $name: $!\n";
 }
 
-$t->try_run('no ssl_conf_command')->plan(3);
+$t->run()->plan(3);
 
 ###############################################################################
 
@@ -89,7 +92,6 @@ $s = http_get(
 	SSL => 1,
 	SSL_session_cache_size => 100
 );
-
 like($s->dump_peer_certificate(), qr/CN=override/, 'Certificate');
 http_end($s);
 
@@ -98,7 +100,6 @@ $s = http_get(
 	SSL => 1,
 	SSL_reuse_ctx => $s
 );
-
 ok($s->get_session_reused(), 'SessionTicket');
 
 $s = http_get(
@@ -109,5 +110,6 @@ $s = http_get(
 );
 
 is($s->get_cipher(), 'ECDHE-RSA-AES128-GCM-SHA256', 'ServerPreference');
+
 
 ###############################################################################
