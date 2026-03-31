@@ -1147,16 +1147,6 @@ if [ $STREAM != NO ]; then
         . auto/module
     fi
 
-    if [ $STREAM_PASS = YES ]; then
-        ngx_module_name=ngx_stream_pass_module
-        ngx_module_deps=
-        ngx_module_srcs=src/stream/ngx_stream_pass_module.c
-        ngx_module_libs=
-        ngx_module_link=$STREAM_PASS
-
-        . auto/module
-    fi
-
     if [ $STREAM_SET = YES ]; then
         ngx_module_name=ngx_stream_set_module
         ngx_module_deps=
@@ -1296,14 +1286,14 @@ fi
 
 if [ $USE_OPENSSL = YES ]; then
     ngx_module_type=CORE
-    ngx_module_name="ngx_openssl_module ngx_openssl_cache_module"
+    ngx_module_name=ngx_openssl_module
     ngx_module_incs=
     ngx_module_deps=src/event/ngx_event_openssl.h
-    ngx_module_srcs="src/event/ngx_event_openssl.c src/event/ngx_event_openssl_stapling.c"
-    NGX_ADDON_SRCS="$NGX_ADDON_SRCS src/event/ngx_event_openssl_cache.c"
+    ngx_module_srcs="src/event/ngx_event_openssl.c
+                     src/event/ngx_event_openssl_stapling.c"
     ngx_module_libs=
     ngx_module_link=YES
-    ngx_module_order="ngx_openssl_cache_module"
+    ngx_module_order=
 
     . auto/module
 fi

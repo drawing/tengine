@@ -34,11 +34,8 @@ __DATA__
 --- response_body
 hello
 world
---- error_log eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-"pcre2 JIT compiled successfully\n"
-:
-"pcre JIT compiling result: 1\n"
+--- error_log
+pcre JIT compiling result: 1
 
 
 
@@ -63,11 +60,8 @@ $Test::Nginx::Util::PcreVersion == 2 ?
 nil
 nil
 nil
---- error_log eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-"pcre2 JIT compiled successfully\n"
-:
-"pcre JIT compiling result: 1\n"
+--- error_log
+pcre JIT compiling result: 1
 
 
 
@@ -83,11 +77,8 @@ $Test::Nginx::Util::PcreVersion == 2 ?
     GET /re
 --- response_body
 done
---- error_log eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-"pcre2 JIT compiled successfully\n"
-:
-"pcre JIT compiling result: 1\n"
+--- error_log
+pcre JIT compiling result: 1
 
 
 
@@ -108,11 +99,8 @@ $Test::Nginx::Util::PcreVersion == 2 ?
     GET /re
 --- response_body
 hello
---- error_log eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-"pcre2 JIT compiled successfully\n"
-:
-"pcre JIT compiling result: 1\n"
+--- error_log
+pcre JIT compiling result: 1
 
 
 
@@ -136,15 +124,9 @@ hello
 world
 
 --- grep_error_log eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-"pcre2 JIT compiled successfully"
-:
-"pcre JIT compiling result: 1"
+qr/pcre JIT compiling result: \d+/
 
 --- grep_error_log_out eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-["pcre2 JIT compiled successfully\n", ""]
-:
 ["pcre JIT compiling result: 1\n", ""]
 
 
@@ -172,15 +154,9 @@ nil
 nil
 
 --- grep_error_log eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-"pcre2 JIT compiled successfully"
-:
-"pcre JIT compiling result: 1"
+qr/pcre JIT compiling result: \d+/
 
 --- grep_error_log_out eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-["pcre2 JIT compiled successfully\n", ""]
-:
 ["pcre JIT compiling result: 1\n", ""]
 
 
@@ -199,15 +175,9 @@ $Test::Nginx::Util::PcreVersion == 2 ?
 done
 
 --- grep_error_log eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-"pcre2 JIT compiled successfully"
-:
-"pcre JIT compiling result: 1"
+qr/pcre JIT compiling result: \d+/
 
 --- grep_error_log_out eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-["pcre2 JIT compiled successfully\n", ""]
-:
 ["pcre JIT compiling result: 1\n", ""]
 
 
@@ -231,15 +201,9 @@ $Test::Nginx::Util::PcreVersion == 2 ?
 hello
 
 --- grep_error_log eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-"pcre2 JIT compiled successfully"
-:
-"pcre JIT compiling result: 1"
+qr/pcre JIT compiling result: \d+/
 
 --- grep_error_log_out eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-["pcre2 JIT compiled successfully\n", ""]
-:
 ["pcre JIT compiling result: 1\n", ""]
 
 
@@ -258,10 +222,7 @@ $Test::Nginx::Util::PcreVersion == 2 ?
     }
 --- request
     GET /re
---- response_body eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-"error: pcre2_compile() failed: missing closing parenthesis in \"(abc\"\n"
-:
-"error: pcre_compile() failed: missing ) in \"(abc\"\n"
+--- response_body
+error: pcre_compile() failed: missing ) in "(abc"
 --- no_error_log
 [error]
