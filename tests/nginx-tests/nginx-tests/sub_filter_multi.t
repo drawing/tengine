@@ -246,8 +246,6 @@ http {
         limit_rate 4;
         limit_rate_after 160;
 
-        keepalive_requests 1;
-
         location / {
             return 200 $arg_a;
         }
