@@ -32,11 +32,8 @@ __DATA__
     GET /re
 --- response_body
 hello, world world: 2
---- error_log eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-"pcre2 JIT compiled successfully\n"
-:
-"pcre JIT compiling result: 1\n"
+--- error_log
+pcre JIT compiling result: 1
 
 
 
@@ -56,11 +53,8 @@ $Test::Nginx::Util::PcreVersion == 2 ?
     GET /re
 --- response_body
 hello, world: 0
---- error_log eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-"pcre2 JIT compiled successfully\n"
-:
-"pcre JIT compiling result: 1\n"
+--- error_log
+pcre JIT compiling result: 1
 
 
 
@@ -82,15 +76,9 @@ $Test::Nginx::Util::PcreVersion == 2 ?
 hello, world world: 2
 
 --- grep_error_log eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-"pcre2 JIT compiled successfully"
-:
-"pcre JIT compiling result: 1"
+qr/pcre JIT compiling result: \d+/
 
 --- grep_error_log_out eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-["pcre2 JIT compiled successfully\n", ""]
-:
 ["pcre JIT compiling result: 1\n", ""]
 
 
@@ -113,15 +101,9 @@ $Test::Nginx::Util::PcreVersion == 2 ?
 hello, world: 0
 
 --- grep_error_log eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-"pcre2 JIT compiled successfully"
-:
-"pcre JIT compiling result: 1"
+qr/pcre JIT compiling result: \d+/
 
 --- grep_error_log_out eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-["pcre2 JIT compiled successfully\n", ""]
-:
 ["pcre JIT compiling result: 1\n", ""]
 
 
@@ -140,11 +122,8 @@ $Test::Nginx::Util::PcreVersion == 2 ?
     }
 --- request
     GET /re
---- response_body eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-"error: pcre2_compile() failed: missing closing parenthesis in \"(abc\"\n"
-:
-"error: pcre_compile() failed: missing ) in \"(abc\"\n"
+--- response_body
+error: pcre_compile() failed: missing ) in "(abc"
 --- no_error_log
 [error]
 
@@ -164,10 +143,7 @@ $Test::Nginx::Util::PcreVersion == 2 ?
     }
 --- request
     GET /re
---- response_body eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-"error: pcre2_compile() failed: missing closing parenthesis in \"(abc\"\n"
-:
-"error: pcre_compile() failed: missing ) in \"(abc\"\n"
+--- response_body
+error: pcre_compile() failed: missing ) in "(abc"
 --- no_error_log
 [error]

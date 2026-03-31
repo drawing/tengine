@@ -26,7 +26,9 @@ my $t = Test::Nginx->new()
 	->has(qw/http http_ssl proxy uwsgi http_v2 grpc openssl:1.0.2/)
 	->has_daemon('openssl');
 
-$t->write_file_expand('nginx.conf', <<'EOF');
+plan(skip_all => 'no ssl_conf_command') if $t->has_module('BoringSSL');
+
+$t->write_file_expand('nginx.conf', <<'EOF')->plan(3);
 
 %%TEST_GLOBALS%%
 
@@ -70,10 +72,8 @@ http {
 
     server {
         listen       127.0.0.1:8081 ssl;
-        listen       127.0.0.1:8082 ssl;
+        listen       127.0.0.1:8082 ssl http2;
         server_name  localhost;
-
-        http2 on;
 
         ssl_certificate localhost.crt;
         ssl_certificate_key localhost.key;
@@ -106,7 +106,10 @@ foreach my $name ('localhost', 'override') {
 }
 
 $t->write_file('index.html', '');
-$t->try_run('no ssl_conf_command')->plan(3);
+# suppress deprecation warning
+open OLDERR, ">&", \*STDERR; close STDERR;
+$t->run();
+open STDERR, ">&", \*OLDERR;
 
 ###############################################################################
 

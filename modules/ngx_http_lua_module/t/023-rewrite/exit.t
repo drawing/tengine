@@ -187,7 +187,6 @@ ngx.var.uid = res[1].uid;
 GET /api?uid=32
 --- response_body
 Logged in 56
---- skip_eval: 2:$ENV{TEST_NGINX_USE_HTTP3}
 
 
 
@@ -259,7 +258,6 @@ ngx.var.uid = res[1].uid;
 GET /api?uid=32
 --- response_body
 Logged in 56
---- skip_eval: 2:$ENV{TEST_NGINX_USE_HTTP3}
 
 
 
@@ -344,7 +342,6 @@ GET /api?uid=32
 Logged in 56
 --- no_error_log
 [error]
---- skip_eval: 3:$ENV{TEST_NGINX_USE_HTTP3}
 
 
 
