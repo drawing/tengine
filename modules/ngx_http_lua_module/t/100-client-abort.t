@@ -1,14 +1,6 @@
 # vim:set ft= ts=4 sw=4 et fdm=marker:
 
-BEGIN {
-    if ($ENV{TEST_NGINX_USE_HTTP3}) {
-        $SkipReason = "client abort detect does not support in http3";
-    } elsif ($ENV{TEST_NGINX_USE_HTTP2}) {
-        $SkipReason = "client abort detect does not support in http2";
-    }
-}
-
-use Test::Nginx::Socket::Lua $SkipReason ? (skip_all => $SkipReason) : ();
+use Test::Nginx::Socket::Lua;
 use t::StapThread;
 
 our $GCScript = <<_EOC_;

@@ -173,12 +173,11 @@ is(test_reuse(8444), 1, 'tickets and cache reused');
 
 TODO: {
 local $TODO = 'no TLSv1.3 session cache in BoringSSL'
-	if $t->has_module('BoringSSL|AWS-LC') && test_tls13();
+	if $t->has_module('BoringSSL') && test_tls13();
 
-# nginx 1.28.3+: builtin cache session reuse may vary
-like(test_reuse(8445), qr/^[01]$/, 'cache shared reused');
-like(test_reuse(8446), qr/^[01]$/, 'cache builtin reused');
-like(test_reuse(8447), qr/^[01]$/, 'cache builtin size reused');
+is(test_reuse(8445), 1, 'cache shared reused');
+is(test_reuse(8446), 1, 'cache builtin reused');
+is(test_reuse(8447), 1, 'cache builtin size reused');
 
 }
 }
