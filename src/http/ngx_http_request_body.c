@@ -92,8 +92,8 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     }
 #endif
 
-#if (NGX_HTTP_V3)
-    if (r->http_version == NGX_HTTP_VERSION_30) {
+#if (T_NGX_XQUIC)
+    if (r->xqstream) {
         rc = ngx_http_v3_read_request_body(r);
         goto done;
     }
@@ -245,8 +245,8 @@ ngx_http_read_unbuffered_request_body(ngx_http_request_t *r)
     }
 #endif
 
-#if (NGX_HTTP_V3)
-    if (r->http_version == NGX_HTTP_VERSION_30) {
+#if (T_NGX_XQUIC)
+    if (r->xqstream) {
         rc = ngx_http_v3_read_unbuffered_request_body(r);
 
         if (rc == NGX_OK) {
@@ -395,6 +395,9 @@ ngx_http_do_read_client_request_body(ngx_http_request_t *r)
 
             rb->buf->last += n;
             r->request_length += n;
+#if (T_NGX_REQ_STATUS)
+            c->received += n;
+#endif
 
             /* pass buffer to request body filter chain */
 
@@ -644,8 +647,9 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
     }
 #endif
 
-#if (NGX_HTTP_V3)
-    if (r->http_version == NGX_HTTP_VERSION_30) {
+#if (T_NGX_XQUIC)
+    if (r->xqstream) {
+        r->xqstream->skip_data = 1;
         return NGX_OK;
     }
 #endif
@@ -870,7 +874,7 @@ ngx_http_discard_request_body_filter(ngx_http_request_t *r, ngx_buf_t *b)
 
         for ( ;; ) {
 
-            rc = ngx_http_parse_chunked(r, b, rb->chunked, 0);
+            rc = ngx_http_parse_chunked(r, b, rb->chunked);
 
             if (rc == NGX_OK) {
 
@@ -946,8 +950,8 @@ ngx_http_test_expect(ngx_http_request_t *r)
 #if (NGX_HTTP_V2)
         || r->stream != NULL
 #endif
-#if (NGX_HTTP_V3)
-        || r->connection->quic != NULL
+#if (T_NGX_XQUIC)
+        || r->xqstream != NULL
 #endif
        )
     {
@@ -1131,16 +1135,7 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
                            cl->buf->file_pos,
                            cl->buf->file_last - cl->buf->file_pos);
 
-            switch (r->http_version) {
-#if (NGX_HTTP_V3)
-            case NGX_HTTP_VERSION_30:
-                rc = ngx_http_v3_parse_request_body(r, cl->buf, rb->chunked);
-                break;
-#endif
-
-            default: /* HTTP/1.x */
-                rc = ngx_http_parse_chunked(r, cl->buf, rb->chunked, 0);
-            }
+            rc = ngx_http_parse_chunked(r, cl->buf, rb->chunked);
 
             if (rc == NGX_OK) {
 
@@ -1325,6 +1320,37 @@ ngx_http_request_body_save_filter(ngx_http_request_t *r, ngx_chain_t *in)
             }
 
             rb->last_saved = 1;
+
+#if (T_NGX_INPUT_BODY_FILTER)
+    {
+    ngx_int_t                  rc;
+    ngx_chain_t               *cl;
+
+    for (cl = in; cl; cl = cl->next) {
+        rc = ngx_http_top_input_body_filter(r, cl->buf);
+        if (rc != NGX_OK) {
+            if (rc > NGX_OK && rc < NGX_HTTP_SPECIAL_RESPONSE) {
+                ngx_log_error(NGX_LOG_ERR, r->connection->log, 0,
+                              "input filter: return code 1xx or 2xx "
+                              "will cause trouble and is converted to 500");
+            }
+
+            /**
+             * NGX_OK: success and continue;
+             * NGX_ERROR: failed and exit;
+             * NGX_AGAIN: not ready and retry later.
+             */
+
+            if (rc < NGX_HTTP_SPECIAL_RESPONSE && rc != NGX_AGAIN) {
+                rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
+            }
+
+            return rc;
+        }
+    }
+    }
+#endif
+
         }
 
         tl = ngx_alloc_chain_link(r->pool);

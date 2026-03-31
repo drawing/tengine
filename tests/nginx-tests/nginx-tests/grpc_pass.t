@@ -23,9 +23,7 @@ select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()->has(qw/http http_ssl http_v2 grpc rewrite/)
-	->has_daemon('openssl')->plan(5);
-
-$t->write_file_expand('nginx.conf', <<'EOF');
+	->has_daemon('openssl')->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -65,11 +63,9 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8081;
-        listen       127.0.0.1:8082 ssl;
+        listen       127.0.0.1:8081 http2;
+        listen       127.0.0.1:8082 http2 ssl;
         server_name  localhost;
-
-        http2 on;
 
         ssl_certificate_key localhost.key;
         ssl_certificate localhost.crt;
@@ -101,7 +97,12 @@ foreach my $name ('localhost') {
 }
 
 $t->run_daemon(\&dns_daemon, port(8982), $t);
-$t->run()->waitforfile($t->testdir . '/' . port(8982));
+# suppress deprecation warning
+open OLDERR, ">&", \*STDERR; close STDERR;
+$t->run()->plan(5);
+open STDERR, ">&", \*OLDERR;
+
+$t->waitforfile($t->testdir . '/' . port(8982));
 
 ###############################################################################
 
@@ -109,9 +110,7 @@ like(http_get('/basic'), qr/200 OK/, 'no scheme');
 like(http_get('/grpc'), qr/200 OK/, 'grpc scheme');
 
 SKIP: {
-skip 'OpenSSL too old', 1
-	if $t->has_module('OpenSSL')
-	and not $t->has_feature('openssl:1.0.2');
+skip 'OpenSSL too old', 1 unless $t->has_feature('openssl:1.0.2');
 
 like(http_get('/grpcs'), qr/200 OK/, 'grpcs scheme');
 
