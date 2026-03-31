@@ -174,8 +174,6 @@ is(test_reuse(8444), 1, 'tickets and cache reused');
 TODO: {
 local $TODO = 'no TLSv1.3 session cache in BoringSSL'
 	if $t->has_module('BoringSSL') && test_tls13();
-local $TODO = 'TLS 1.3 PSK session reuse differs from TLS 1.2 session id'
-	if test_tls13();
 
 is(test_reuse(8445), 1, 'cache shared reused');
 is(test_reuse(8446), 1, 'cache builtin reused');

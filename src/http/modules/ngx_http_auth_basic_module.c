@@ -253,8 +253,7 @@ ngx_http_auth_basic_handler(ngx_http_request_t *r)
         pwd.len = i - passwd;
         pwd.data = ngx_pnalloc(r->pool, pwd.len + 1);
         if (pwd.data == NULL) {
-            rc = NGX_HTTP_INTERNAL_SERVER_ERROR;
-            goto cleanup;
+            return NGX_HTTP_INTERNAL_SERVER_ERROR;
         }
 
         ngx_cpystrn(pwd.data, &buf[passwd], pwd.len + 1);

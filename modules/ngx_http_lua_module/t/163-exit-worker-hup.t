@@ -6,9 +6,6 @@ BEGIN {
     if ($ENV{TEST_NGINX_CHECK_LEAK}) {
         $SkipReason = "unavailable for the hup tests";
 
-    } elsif ($ENV{TEST_NGINX_USE_HTTP3}) {
-        $SkipReason = "http3 does not support hub reload";
-
     } else {
         $ENV{TEST_NGINX_USE_HUP} = 1;
         undef $ENV{TEST_NGINX_USE_STAP};
@@ -57,7 +54,7 @@ log from exit_worker_by_lua_block
     }
 
     server {
-        listen $TEST_NGINX_RAND_PORT_1;
+        listen 12345;
 
         location = /t {
             echo 'hello world';
@@ -68,7 +65,7 @@ log from exit_worker_by_lua_block
         content_by_lua_block {
             ngx.timer.at(0, function ()
                 local sock = ngx.socket.tcp()
-                sock:connect("127.0.0.1", $TEST_NGINX_RAND_PORT_1)
+                sock:connect("127.0.0.1", 12345)
                 local reader = sock:receiveuntil("unknow")
                 ngx.log(ngx.NOTICE, "reading to block the exiting")
                 reader()

@@ -86,7 +86,6 @@ failed to receive a line: closed []
 close: 1 nil
 --- no_error_log
 [error]
---- no_http2
 
 
 
@@ -156,7 +155,6 @@ failed to receive a line: closed [foo]
 closed
 --- no_error_log
 [error]
---- no_http2
 
 
 
@@ -199,7 +197,6 @@ connected: nil
 failed to send request: closed
 --- error_log
 attempt to send data on a closed socket:
---- no_http2
 
 
 
@@ -524,7 +521,6 @@ failed to receive a line: closed
 close: 1 nil
 --- no_error_log
 [error]
---- no_http2
 
 
 
@@ -595,7 +591,6 @@ close: 1 nil
 "
 --- no_error_log
 [error]
---- no_http2
 
 
 
@@ -677,7 +672,6 @@ close: 1 nil
 "
 --- no_error_log
 [error]
---- no_http2
 
 
 
@@ -755,7 +749,6 @@ close: 1 nil
 "
 --- no_error_log
 [error]
---- no_http2
 
 
 
@@ -834,7 +827,6 @@ close: 1 nil
 "
 --- no_error_log
 [error]
---- no_http2
 
 
 
@@ -906,7 +898,6 @@ failed to receive a line: closed []
 close: 1 nil
 --- no_error_log
 [error]
---- no_http2
 
 
 
@@ -976,7 +967,6 @@ failed to receive a line: closed []
 close: 1 nil
 --- no_error_log
 [error]
---- no_http2
 
 
 
@@ -1087,7 +1077,6 @@ close: 1 nil
 "
 --- no_error_log
 [error]
---- no_http2
 
 
 
@@ -1532,7 +1521,6 @@ GET /t
 2: close: 1 nil
 --- no_error_log
 [error]
---- no_http2
 
 
 
@@ -1605,7 +1593,6 @@ failed to receive a line: closed []
 close: 1 nil
 --- no_error_log
 [error]
---- no_http2
 
 
 
@@ -1667,9 +1654,6 @@ GET /t
 --- ignore_response
 --- error_log
 bad argument #1 to 'send' (bad data type nil found)
---- curl_error eval
-qr#curl: \(52\) Empty reply from server|curl: \(95\) HTTP/3 stream 0 reset by server#
---- no_http2
 
 
 
@@ -1731,9 +1715,6 @@ GET /t
 --- ignore_response
 --- error_log
 bad argument #1 to 'send' (bad data type boolean found)
---- curl_error eval
-qr#curl: \(52\) Empty reply from server|curl: \(95\) HTTP/3 stream 0 reset by server#
---- no_http2
 
 
 
@@ -1795,9 +1776,6 @@ GET /t
 --- ignore_response
 --- error_log
 bad argument #1 to 'send' (bad data type userdata found)
---- curl_error eval
-qr#curl: \(52\) Empty reply from server|curl: \(95\) HTTP/3 stream 0 reset by server#
---- no_http2
 
 
 
@@ -1867,7 +1845,6 @@ subrequest: 200, OK\r
 "
 --- no_error_log
 [error]
---- no_http2
 
 
 
@@ -1939,7 +1916,6 @@ close: 1 nil
 --- no_error_log
 [error]
 --- SKIP
---- no_http2
 
 
 
@@ -2000,7 +1976,6 @@ receive(0): []
 close: 1 nil
 --- no_error_log
 [error]
---- no_http2
 
 
 
@@ -2061,7 +2036,6 @@ send(""): 0
 close: 1 nil
 --- no_error_log
 [error]
---- no_http2
 
 
 
@@ -2118,7 +2092,6 @@ qr/runtime error: rewrite_by_lua\(nginx\.conf:\d+\):7: bad request/
 
 --- no_error_log
 [alert]
---- no_http2
 
 
 
@@ -2178,7 +2151,6 @@ qr/runtime error: rewrite_by_lua\(nginx\.conf:\d+\):14: bad request/
 
 --- no_error_log
 [alert]
---- no_http2
 
 
 

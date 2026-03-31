@@ -444,7 +444,6 @@ GET /lua
 ok
 --- error_log
 API disabled in the context of log_by_lua*
---- skip_eval: 3:$ENV{TEST_NGINX_USE_HTTP3}
 
 
 
@@ -458,16 +457,8 @@ API disabled in the context of log_by_lua*
 GET /lua
 --- response_body
 ok
---- error_log eval
-my $err_log;
-
-if (defined $ENV{TEST_NGINX_USE_HTTP3}) {
-    $err_log = "http v3 not supported yet";
-} else {
-    $err_log = "API disabled in the context of log_by_lua*";
-}
-
-$err_log;
+--- error_log
+API disabled in the context of log_by_lua*
 
 
 

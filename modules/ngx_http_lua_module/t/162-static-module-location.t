@@ -40,11 +40,9 @@ Location: %00%0A%0Dset-cookie:1234567/
 Hello, world
 --- request
 GET /t/中文
---- more_headers
-host: localhost
 --- error_code: 301
 --- response_headers_like
-Location: https?:\/\/localhost:\d+\/t\/%E4%B8%AD%E6%96%87\/
+Location: http:\/\/localhost:\d+\/t\/%E4%B8%AD%E6%96%87\/
 --- response_body_like
 .*301 Moved Permanently.*
 
@@ -58,11 +56,9 @@ Location: https?:\/\/localhost:\d+\/t\/%E4%B8%AD%E6%96%87\/
 Hello, world
 --- request
 GET /t/中文?q=name
---- more_headers
-host: localhost
 --- error_code: 301
 --- response_headers_like
-Location: https?:\/\/localhost:\d+\/t\/%E4%B8%AD%E6%96%87\/\?q=name
+Location: http:\/\/localhost:\d+\/t\/%E4%B8%AD%E6%96%87\/\?q=name
 --- response_body_like
 .*301 Moved Permanently.*
 
@@ -76,11 +72,9 @@ Location: https?:\/\/localhost:\d+\/t\/%E4%B8%AD%E6%96%87\/\?q=name
 Hello, world
 --- request
 GET /t/%E4%B8%AD%E6%96%87
---- more_headers
-host: localhost
 --- error_code: 301
 --- response_headers_like
-Location: https?:\/\/localhost:\d+\/t\/%E4%B8%AD%E6%96%87\/
+Location: http:\/\/localhost:\d+\/t\/%E4%B8%AD%E6%96%87\/
 --- response_body_like
 .*301 Moved Permanently.*
 
@@ -94,10 +88,8 @@ Location: https?:\/\/localhost:\d+\/t\/%E4%B8%AD%E6%96%87\/
 Hello, world
 --- request
 GET /t/%E4%B8%AD%E6%96%87?q=name
---- more_headers
-host: localhost
 --- error_code: 301
 --- response_headers_like
-Location: https?://localhost:\d+\/t\/%E4%B8%AD%E6%96%87\/\?q=name
+Location: http://localhost:\d+\/t\/%E4%B8%AD%E6%96%87\/\?q=name
 --- response_body_like
 .*301 Moved Permanently.*
