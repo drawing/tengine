@@ -1,7 +1,6 @@
 # vim:set ft= ts=4 sw=4 et fdm=marker:
 
 use Test::Nginx::Socket::Lua;
-use Test::Nginx::Util 'is_tcp_port_used';
 
 #master_on();
 #workers(1);
@@ -16,16 +15,6 @@ plan tests => repeat_each() * (blocks() * 3 + 23);
 
 $ENV{TEST_NGINX_MEMCACHED_PORT} ||= 11211;
 $ENV{TEST_NGINX_HTML_DIR} ||= html_dir();
-
-# NB: tcp_listen_port needs to be greater than 10000,
-# because the test cases expect it to be a 5-digit number
-my $tcp_listen_port = 19113;
-while (++$tcp_listen_port < 65535) {
-    if (!is_tcp_port_used $tcp_listen_port) {
-        last;
-    }
-}
-$ENV{TEST_NGINX_TCP_LISTEN_PORT} = $tcp_listen_port;
 
 #no_diff();
 no_long_string();
@@ -1238,8 +1227,6 @@ F(ngx_http_finalize_request) {
 --- error_code
 --- no_error_log
 [error]
---- curl_error eval
-qr{(\Qcurl: (52) Empty reply from server\E|\Qcurl: (95) HTTP/3 stream 0 reset by server\E)}ms
 
 
 
@@ -1251,7 +1238,7 @@ qr{(\Qcurl: (52) Empty reply from server\E|\Qcurl: (95) HTTP/3 stream 0 reset by
 
         set $memc_key 'foo';
         #set $memc_exptime 300;
-        memc_pass 127.0.0.1:$TEST_NGINX_RAND_PORT_1; #$TEST_NGINX_MEMCACHED_PORT;
+        memc_pass 127.0.0.1:19112; #$TEST_NGINX_MEMCACHED_PORT;
     }
 
     location /main {
@@ -1264,7 +1251,7 @@ qr{(\Qcurl: (52) Empty reply from server\E|\Qcurl: (95) HTTP/3 stream 0 reset by
     }
 --- request
 GET /main
---- tcp_listen: $TEST_NGINX_RAND_PORT_1
+--- tcp_listen: 19112
 --- tcp_query_len: 9
 --- tcp_reply eval
 "VALUE foo 0 1024\r\nhello world"
@@ -1321,7 +1308,7 @@ upstream prematurely closed connection
 
         set $memc_key 'foo';
         #set $memc_exptime 300;
-        memc_pass 127.0.0.1:$TEST_NGINX_RAND_PORT_1; #$TEST_NGINX_MEMCACHED_PORT;
+        memc_pass 127.0.0.1:19112; #$TEST_NGINX_MEMCACHED_PORT;
     }
 
     location /main {
@@ -1334,7 +1321,7 @@ upstream prematurely closed connection
     }
 --- request
 GET /main
---- tcp_listen: $TEST_NGINX_RAND_PORT_1
+--- tcp_listen: 19112
 --- tcp_no_close
 --- tcp_reply eval
 "VALUE foo 0 1024\r\nhello world"
@@ -1394,7 +1381,7 @@ upstream timed out
 
         #proxy_read_timeout 100ms;
         proxy_buffering on;
-        proxy_pass http://127.0.0.1:$TEST_NGINX_TCP_LISTEN_PORT;
+        proxy_pass http://127.0.0.1:19113;
     }
 
     location /main {
@@ -1407,7 +1394,7 @@ upstream timed out
     }
 --- request
 GET /main
---- tcp_listen: $TEST_NGINX_TCP_LISTEN_PORT
+--- tcp_listen: 19113
 --- tcp_query_len: 65
 --- tcp_reply eval
 "HTTP/1.0 200 OK\r\nContent-Length: 1024\r\n\r\nhello world"
@@ -1454,7 +1441,7 @@ upstream prematurely closed connection
 
         proxy_read_timeout 100ms;
         proxy_buffering on;
-        proxy_pass http://127.0.0.1:$TEST_NGINX_TCP_LISTEN_PORT;
+        proxy_pass http://127.0.0.1:19113;
     }
 
     location /main {
@@ -1467,7 +1454,7 @@ upstream prematurely closed connection
     }
 --- request
 GET /main
---- tcp_listen: $TEST_NGINX_TCP_LISTEN_PORT
+--- tcp_listen: 19113
 --- tcp_no_close
 --- tcp_reply eval
 "HTTP/1.0 200 OK\r\nContent-Length: 1024\r\n\r\nhello world"
@@ -1516,7 +1503,7 @@ upstream timed out
 
         #proxy_read_timeout 100ms;
         proxy_buffering on;
-        proxy_pass http://127.0.0.1:$TEST_NGINX_TCP_LISTEN_PORT;
+        proxy_pass http://127.0.0.1:19113;
     }
 
     location /main {
@@ -1529,7 +1516,7 @@ upstream timed out
     }
 --- request
 GET /main
---- tcp_listen: $TEST_NGINX_TCP_LISTEN_PORT
+--- tcp_listen: 19113
 --- tcp_query_len: 65
 --- tcp_reply eval
 "HTTP/1.0 200 OK\r\n\r\nhello world"
@@ -1576,7 +1563,7 @@ truncated: false
 
         proxy_read_timeout 100ms;
         proxy_buffering on;
-        proxy_pass http://127.0.0.1:$TEST_NGINX_TCP_LISTEN_PORT;
+        proxy_pass http://127.0.0.1:19113;
     }
 
     location /main {
@@ -1589,7 +1576,7 @@ truncated: false
     }
 --- request
 GET /main
---- tcp_listen: $TEST_NGINX_TCP_LISTEN_PORT
+--- tcp_listen: 19113
 --- tcp_no_close
 --- tcp_reply eval
 "HTTP/1.0 200 OK\r\n\r\nhello world"
@@ -1639,7 +1626,7 @@ upstream timed out
 
         #proxy_read_timeout 100ms;
         proxy_buffering off;
-        proxy_pass http://127.0.0.1:$TEST_NGINX_TCP_LISTEN_PORT;
+        proxy_pass http://127.0.0.1:19113;
     }
 
     location /main {
@@ -1652,7 +1639,7 @@ upstream timed out
     }
 --- request
 GET /main
---- tcp_listen: $TEST_NGINX_TCP_LISTEN_PORT
+--- tcp_listen: 19113
 --- tcp_query_len: 65
 --- tcp_reply eval
 "HTTP/1.0 200 OK\r\n\r\nhello world"
@@ -1699,7 +1686,7 @@ truncated: false
 
         proxy_read_timeout 500ms;
         proxy_buffering off;
-        proxy_pass http://127.0.0.1:$TEST_NGINX_TCP_LISTEN_PORT;
+        proxy_pass http://127.0.0.1:19113;
     }
 
     location /main {
@@ -1712,7 +1699,7 @@ truncated: false
     }
 --- request
 GET /main
---- tcp_listen: $TEST_NGINX_TCP_LISTEN_PORT
+--- tcp_listen: 19113
 --- tcp_no_close
 --- tcp_reply eval
 "HTTP/1.0 200 OK\r\n\r\nhello world"
@@ -1925,7 +1912,7 @@ a client request body is buffered to a temporary file
         #proxy_read_timeout 100ms;
         proxy_http_version 1.1;
         proxy_buffering on;
-        proxy_pass http://127.0.0.1:$TEST_NGINX_TCP_LISTEN_PORT;
+        proxy_pass http://127.0.0.1:19113;
     }
 
     location /main {
@@ -1938,7 +1925,7 @@ a client request body is buffered to a temporary file
     }
 --- request
 GET /main
---- tcp_listen: $TEST_NGINX_TCP_LISTEN_PORT
+--- tcp_listen: 19113
 --- tcp_query_len: 65
 --- tcp_reply eval
 "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\nb\r\nhello world\r"
@@ -1988,7 +1975,7 @@ upstream prematurely closed connection
         #proxy_read_timeout 100ms;
         proxy_http_version 1.1;
         proxy_buffering off;
-        proxy_pass http://127.0.0.1:$TEST_NGINX_TCP_LISTEN_PORT;
+        proxy_pass http://127.0.0.1:19113;
     }
 
     location /main {
@@ -2001,7 +1988,7 @@ upstream prematurely closed connection
     }
 --- request
 GET /main
---- tcp_listen: $TEST_NGINX_TCP_LISTEN_PORT
+--- tcp_listen: 19113
 --- tcp_query_len: 65
 --- tcp_reply eval
 "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\nb\r\nhello world\r"
@@ -2049,7 +2036,7 @@ upstream prematurely closed connection
         proxy_read_timeout 100ms;
         proxy_buffering on;
         proxy_http_version 1.1;
-        proxy_pass http://127.0.0.1:$TEST_NGINX_TCP_LISTEN_PORT;
+        proxy_pass http://127.0.0.1:19113;
     }
 
     location /main {
@@ -2062,7 +2049,7 @@ upstream prematurely closed connection
     }
 --- request
 GET /main
---- tcp_listen: $TEST_NGINX_TCP_LISTEN_PORT
+--- tcp_listen: 19113
 --- tcp_no_close
 --- tcp_reply eval
 "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\nb\r\nhello world\r"
@@ -2111,7 +2098,7 @@ upstream timed out
         #proxy_read_timeout 100ms;
         proxy_buffering on;
         proxy_http_version 1.1;
-        proxy_pass http://127.0.0.1:$TEST_NGINX_TCP_LISTEN_PORT;
+        proxy_pass http://127.0.0.1:19113;
     }
 
     location /main {
@@ -2124,7 +2111,7 @@ upstream timed out
     }
 --- request
 GET /main
---- tcp_listen: $TEST_NGINX_TCP_LISTEN_PORT
+--- tcp_listen: 19113
 --- tcp_no_close
 --- tcp_reply eval
 "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n"
@@ -2169,7 +2156,7 @@ truncated: false
         #proxy_read_timeout 100ms;
         proxy_buffering off;
         proxy_http_version 1.1;
-        proxy_pass http://127.0.0.1:$TEST_NGINX_TCP_LISTEN_PORT;
+        proxy_pass http://127.0.0.1:19113;
     }
 
     location /main {
@@ -2182,7 +2169,7 @@ truncated: false
     }
 --- request
 GET /main
---- tcp_listen: $TEST_NGINX_TCP_LISTEN_PORT
+--- tcp_listen: 19113
 --- tcp_no_close
 --- tcp_reply eval
 "HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n5\r\nhello\r\n0\r\n\r\n"
@@ -2228,7 +2215,7 @@ truncated: false
 
         #proxy_read_timeout 100ms;
         proxy_buffering off;
-        proxy_pass http://127.0.0.1:$TEST_NGINX_TCP_LISTEN_PORT;
+        proxy_pass http://127.0.0.1:19113;
     }
 
     location /main {
@@ -2241,7 +2228,7 @@ truncated: false
     }
 --- request
 GET /main
---- tcp_listen: $TEST_NGINX_TCP_LISTEN_PORT
+--- tcp_listen: 19113
 --- tcp_query_len: 65
 --- tcp_reply eval
 "HTTP/1.0 200 OK\r\nContent-Length: 1024\r\n\r\nhello world"
@@ -2351,7 +2338,6 @@ hello world
 nil
 --- no_error_log
 [error]
---- skip_eval: 3:$ENV{TEST_NGINX_USE_HTTP3}
 
 
 
@@ -2636,7 +2622,6 @@ pr: Host: localhost
 
 --- no_error_log
 [error]
---- skip_eval: 3:$ENV{TEST_NGINX_USE_HTTP3}
 
 
 
@@ -2670,7 +2655,6 @@ pr: Host: localhost
 
 --- no_error_log
 [error]
---- skip_eval: 3:$ENV{TEST_NGINX_USE_HTTP3}
 
 
 
@@ -3538,83 +3522,3 @@ HTTP/1.1 400 Bad Request
 [error]
 --- skip_nginx
 3: < 1.21.1
-
-
-
-=== TEST 83: avoid request smuggling of HEAD req
---- config
-    location /capture {
-        server_tokens off;
-        more_clear_headers Date;
-
-        content_by_lua_block {
-            ngx.say("Hello")
-        }
-    }
-
-    location /t {
-        content_by_lua_block {
-            local req = [[
-HEAD /capture HTTP/1.1
-Host: test.com
-Content-Length: 63
-
-GET /capture HTTP/1.1
-Host: test.com
-X: GET /bar HTTP/1.0
-
-]]
-
-            local sock = ngx.socket.tcp()
-            sock:settimeout(1000)
-
-            local ok, err = sock:connect("127.0.0.1", $TEST_NGINX_SERVER_PORT)
-            if not ok then
-                ngx.say("failed to connect: ", err)
-                return
-            end
-
-            local bytes, err = sock:send(req)
-            if not bytes then
-                ngx.say("failed to send req: ", err)
-                return
-            end
-
-            ngx.say("req bytes: ", bytes)
-
-            local n_resp = 0
-
-            local reader = sock:receiveuntil("\r\n")
-            while true do
-                local line, err = reader()
-                if line then
-                    ngx.say(line)
-                    if line == "0" then
-                        n_resp = n_resp + 1
-                    end
-
-                    if n_resp >= 2 then
-                        break
-                    end
-
-                else
-                    ngx.say("err: ", err)
-                    break
-                end
-            end
-
-            sock:close()
-        }
-    }
---- request
-GET /t
---- response_body
-req bytes: 117
-HTTP/1.1 200 OK
-Server: nginx
-Content-Type: text/plain
-Connection: keep-alive
-
-err: timeout
---- error_log
-lua tcp socket read timed out

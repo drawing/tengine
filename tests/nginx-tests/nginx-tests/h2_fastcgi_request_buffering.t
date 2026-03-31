@@ -38,10 +38,8 @@ http {
     %%TEST_GLOBALS_HTTP%%
 
     server {
-        listen       127.0.0.1:8080;
+        listen       127.0.0.1:8080 http2;
         server_name  localhost;
-
-        http2 on;
 
         location / {
             fastcgi_request_buffering off;
@@ -54,7 +52,10 @@ http {
 
 EOF
 
+# suppress deprecation warning
+open OLDERR, ">&", \*STDERR; close STDERR;
 $t->run();
+open STDERR, ">&", \*OLDERR;
 
 ###############################################################################
 

@@ -40,7 +40,6 @@ sub new {
 		: 'PRI * HTTP/2.0' . CRLF . CRLF . 'SM' . CRLF . CRLF;
 
 	my $self = bless {
-		buf => '',
 		socket => $s, last_stream => -1,
 		dynamic_encode => [ static_table() ],
 		dynamic_decode => [ static_table() ],
@@ -283,7 +282,7 @@ sub read {
 	my ($self, %extra) = @_;
 	my (@got);
 	my $s = $self->{socket};
-	my $buf = $self->{buf};
+	my $buf = '';
 	my $wait = $extra{wait};
 
 	local $Data::Dumper::Terse = 1;
@@ -319,7 +318,6 @@ sub read {
 
 		last unless $extra{all} && test_fin($got[-1], $extra{all});
 	};
-	$self->{buf} = $buf;
 	return \@got;
 }
 
@@ -647,7 +645,7 @@ sub ipack {
 	$d -= 2**$base - 1;
 	while ($d >= 128) {
 		$o .= sprintf("%8b", $d % 128 + 128);
-		$d >>= 7;
+		$d /= 128;
 	}
 	$o .= sprintf("%08b", $d);
 	return $o;

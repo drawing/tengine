@@ -41,7 +41,6 @@ __DATA__
     server_tokens off;
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -142,7 +141,6 @@ ssl_session_fetch_by_lua\(nginx\.conf:25\):1: ssl fetch sess by lua is running!,
     server_tokens off;
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -227,7 +225,6 @@ qr/elapsed in ssl fetch session by lua: 0.(?:09|1[01])\d+,/,
     server_tokens off;
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -329,7 +326,6 @@ qr/my timer run!/s
     server_tokens off;
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -411,7 +407,6 @@ qr/received memc reply: OK/s
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
     lua_ssl_verify_depth 3;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -493,7 +488,6 @@ should never reached here
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
     lua_ssl_verify_depth 3;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -576,7 +570,6 @@ should never reached here
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
     lua_ssl_verify_depth 3;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -657,7 +650,6 @@ should never reached here
     server_tokens off;
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
     lua_ssl_verify_depth 3;
 
     location /t {
@@ -741,7 +733,6 @@ should never reached here
     server_tokens off;
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
     lua_ssl_verify_depth 3;
 
     location /t {
@@ -823,7 +814,6 @@ should never reached here
     server_tokens off;
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -910,7 +900,6 @@ qr/get_phase: ssl_session_fetch/s
     server_tokens off;
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -957,21 +946,6 @@ close: 1 nil
 qr/ssl ((fetch|store) session|cert) by lua is running!/s
 
 --- grep_error_log_out eval
-if ($ENV{TEST_NGINX_USE_HTTP3}) {
-[
-'ssl cert by lua is running!
-ssl store session by lua is running!
-',
-'ssl cert by lua is running!
-ssl fetch session by lua is running!
-ssl store session by lua is running!
-',
-'ssl cert by lua is running!
-ssl fetch session by lua is running!
-ssl store session by lua is running!
-',
-]
-} else {
 [
 'ssl cert by lua is running!
 ssl store session by lua is running!
@@ -985,7 +959,6 @@ ssl cert by lua is running!
 ssl store session by lua is running!
 ',
 ]
-}
 
 --- no_error_log
 [error]
@@ -1009,7 +982,6 @@ ssl store session by lua is running!
 --- config
     server_tokens off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -1098,7 +1070,6 @@ qr/\S+:\d+: ssl fetch sess by lua is running!/s
     server_tokens off;
     resolver $TEST_NGINX_RESOLVER ipv6=off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -1199,7 +1170,6 @@ qr/ssl_session_fetch_by_lua\(nginx.conf:\d+\):1: ssl fetch sess by lua is runnin
 --- config
     server_tokens off;
     lua_ssl_trusted_certificate ../../cert/test.crt;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
 
     location /t {
         content_by_lua_block {
@@ -1279,7 +1249,6 @@ GET /t
 --- config
     server_tokens off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
 
     location /t {
         content_by_lua_block {
@@ -1413,7 +1382,6 @@ ssl_session_fetch_by_lua\(nginx\.conf:\d+\):1: ssl_session_fetch_by_lua\* is run
 [error]
 [alert]
 [emerg]
---- skip_eval: 6:$ENV{TEST_NGINX_USE_HTTP3}
 
 
 
@@ -1438,7 +1406,6 @@ ssl_session_fetch_by_lua\(nginx\.conf:\d+\):1: ssl_session_fetch_by_lua\* is run
 --- config
     server_tokens off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
 
     location /t {
         set $port $TEST_NGINX_MEMCACHED_PORT;
@@ -1534,7 +1501,6 @@ qr/elapsed in ssl_session_fetch_by_lua\*: 0\.(?:09|1[01])\d+,/,
 --- config
     server_tokens off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
 
     location /t {
         content_by_lua_block {
@@ -1630,7 +1596,6 @@ close: 1 nil
 --- config
     server_tokens off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
 
     location /t {
         content_by_lua_block {
@@ -1731,7 +1696,6 @@ uthread: failed to kill: already waited or killed
 --- config
     server_tokens off;
     lua_ssl_trusted_certificate $TEST_NGINX_CERT_DIR/cert/test.crt;
-    lua_ssl_protocols TLSv1 TLSv1.1 TLSV1.2;
 
     location /t {
         content_by_lua_block {

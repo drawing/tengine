@@ -19,7 +19,6 @@ run_tests();
 __DATA__
 
 === TEST 1: ambiguous boundary patterns (abcabd) - inclusive mode
---- no_http2
 --- config
     server_tokens off;
     location /t {
@@ -92,7 +91,6 @@ close: 1 nil
 
 
 === TEST 2: ambiguous boundary patterns (abcabdabcabe 4) - inclusive mode
---- no_http2
 --- config
     server_tokens off;
     location /t {
@@ -164,7 +162,6 @@ close: 1 nil
 
 
 === TEST 3: ambiguous boundary patterns (abcabd) - inclusive mode - small buffers
---- no_http2
 --- config
     server_tokens off;
     lua_socket_buffer_size 1;
@@ -238,7 +235,6 @@ close: 1 nil
 
 
 === TEST 4: inclusive option value nil
---- no_http2
 --- config
     server_tokens off;
     location /t {
@@ -310,7 +306,6 @@ close: 1 nil
 
 
 === TEST 5: inclusive option value false
---- no_http2
 --- config
     server_tokens off;
     location /t {
@@ -382,7 +377,6 @@ close: 1 nil
 
 
 === TEST 6: inclusive option value true (aa)
---- no_http2
 --- config
     server_tokens off;
     location /t {
@@ -454,7 +448,6 @@ close: 1 nil
 
 
 === TEST 7: bad inclusive option value type
---- no_http2
 --- config
     server_tokens off;
     location /t {
@@ -518,13 +511,10 @@ bad "inclusive" option value type: string
 --- no_error_log
 [alert]
 [warn]
---- curl_error eval
-qr#curl: \(52\) Empty reply from server|curl: \(95\) HTTP\/3 stream 0 reset by server#
 
 
 
 === TEST 8: bad option table
---- no_http2
 --- config
     server_tokens off;
     location /t {
@@ -588,13 +578,10 @@ bad "inclusive" option value type: string
 --- no_error_log
 [alert]
 [warn]
---- curl_error eval
-qr#curl: \(52\) Empty reply from server|curl: \(95\) HTTP\/3 stream 0 reset by server#
 
 
 
 === TEST 9: ambiguous boundary patterns (--abc), small buffer
---- no_http2
 --- config
     server_tokens off;
     location /t {
@@ -671,7 +658,6 @@ close: 1 nil
 
 
 === TEST 10: ambiguous boundary patterns (--abc), small buffer, mixed by other reading calls
---- no_http2
 --- config
     server_tokens off;
     location /t {

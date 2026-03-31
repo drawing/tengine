@@ -110,7 +110,6 @@ bad argument #1 to 'sleep'
 
 
 === TEST 5: sleep 0.5 - multi-times
---- quic_max_idle_timeout: 1.0
 --- config
     location /test {
         rewrite_by_lua '
@@ -136,7 +135,6 @@ lua sleep timer expired: "/test?"
 
 
 === TEST 6: sleep 0.5 - interleaved by ngx.say() - ended by ngx.sleep
---- quic_max_idle_timeout: 2.05
 --- config
     location /test {
         rewrite_by_lua '
@@ -165,7 +163,6 @@ lua sleep timer expired: "/test?"
 
 
 === TEST 7: sleep 0.5 - interleaved by ngx.say() - not ended by ngx.sleep
---- quic_max_idle_timeout: 0.85
 --- config
     location /test {
         rewrite_by_lua '
