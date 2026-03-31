@@ -220,6 +220,15 @@ ngx_http_v3_cert_cb(const char *sni, void **chain,
         /* try to get ssl config from the default connection */
         ngx_log_error(NGX_LOG_INFO, ngx_cycle->log, 0,
                      "|xquic|can't find virtual server, use default server|");
+        
+        /* Use the default server conf context from the listening socket */
+        if (hc->addr_conf && hc->addr_conf->default_server && hc->addr_conf->default_server->ctx) {
+            hc->conf_ctx = hc->addr_conf->default_server->ctx;
+        } else {
+            ngx_log_error(NGX_LOG_ERR, ngx_cycle->log, 0,
+                        "|xquic|no valid server config found||sni:%s|", sni);
+            return XQC_ERROR;
+        }
     }
 
 #ifdef T_NGX_HTTP_HAVE_LUA_MODULE
