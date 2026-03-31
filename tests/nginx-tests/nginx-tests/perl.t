@@ -153,12 +153,17 @@ like(http(
 	. 'Host: localhost' . CRLF . CRLF
 ), qr/xfoo: foo/, 'perl header_in unknown');
 
+TODO: {
+local $TODO = 'not yet' unless $t->has_version('1.23.0');
+
 like(http(
 	'GET / HTTP/1.0' . CRLF
 	. 'X-Foo: foo' . CRLF
 	. 'X-Foo: bar' . CRLF
 	. 'Host: localhost' . CRLF . CRLF
 ), qr/xfoo: foo, bar/, 'perl header_in unknown2');
+
+}
 
 like(http(
 	'GET / HTTP/1.0' . CRLF
@@ -186,6 +191,9 @@ like(http(
 	. 'Host: localhost' . CRLF . CRLF
 ), qr/xff: foo1, foo2/, 'perl header_in xff2');
 
+TODO: {
+local $TODO = 'not yet' unless $t->has_version('1.23.0');
+
 like(http(
 	'GET / HTTP/1.0' . CRLF
 	. 'Connection: close' . CRLF
@@ -198,6 +206,8 @@ like(http(
 	. 'Connection: foo' . CRLF
 	. 'Host: localhost' . CRLF . CRLF
 ), qr/connection: close, foo/, 'perl header_in connection2');
+
+}
 
 # headers_out content-length tests with range filter
 

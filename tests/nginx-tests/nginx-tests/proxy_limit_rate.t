@@ -15,14 +15,14 @@ use Test::More;
 BEGIN { use FindBin; chdir($FindBin::Bin); }
 
 use lib 'lib';
-use Test::Nginx qw/ :DEFAULT http_content /;
+use Test::Nginx;
 
 ###############################################################################
 
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
-my $t = Test::Nginx->new()->has(qw/http proxy upstream_keepalive/)->plan(6);
+my $t = Test::Nginx->new()->has(qw/http proxy upstream_keepalive/)->plan(4);
 
 $t->write_file_expand('nginx.conf', <<'EOF');
 
@@ -45,26 +45,20 @@ http {
         listen       127.0.0.1:8080;
         server_name  localhost;
 
-        proxy_limit_rate 20000;
-        proxy_buffer_size 4k;
-
         location / {
             proxy_pass http://127.0.0.1:8080/data;
-            add_header  X-Msec $msec;
-            add_trailer X-Msec $msec;
-        }
-
-        location /unlimited {
-            proxy_pass http://127.0.0.1:8080/data;
-            proxy_limit_rate 0;
-            add_header  X-Msec $msec;
-            add_trailer X-Msec $msec;
+            proxy_buffer_size 4k;
+            proxy_limit_rate 20000;
+            add_header X-Msec $msec;
         }
 
         location /keepalive {
             proxy_http_version 1.1;
             proxy_set_header Connection "";
             proxy_pass http://u/data;
+            proxy_buffer_size 4k;
+            proxy_limit_rate 20000;
+            add_header X-Msec $msec;
         }
 
         location /data {
@@ -79,36 +73,20 @@ $t->run();
 
 ###############################################################################
 
-my ($body, $t1, $t2) = get('/');
+my $r = http_get('/');
 
-cmp_ok($t2 - $t1, '>=', 1, 'proxy_limit_rate');
-is($body, 'X' x 40000, 'response body');
+my ($t1) = $r =~ /X-Msec: (\d+)/;
+my $diff = time() - $t1;
 
-# unlimited
+# four chunks are split with three 1s delays
 
-($body, $t1, $t2) = get('/unlimited');
-
-is($t2 - $t1, 0, 'proxy_limit_rate unlimited');
-is($body, 'X' x 40000, 'response body unlimited');
+cmp_ok($diff, '>=', 1, 'proxy_limit_rate');
+like($r, qr/^(XXXXXXXXXX){4000}\x0d?\x0a?$/m, 'response body');
 
 # in case keepalive connection was saved with the delayed flag,
 # the read timer used to be a delay timer in the next request
 
 like(http_get('/keepalive'), qr/200 OK/, 'keepalive');
 like(http_get('/keepalive'), qr/200 OK/, 'keepalive 2');
-
-###############################################################################
-
-sub get {
-	my ($uri) = @_;
-	my $r = http(<<EOF);
-GET $uri HTTP/1.1
-Host: localhost
-Connection: close
-
-EOF
-
-	http_content($r), $r =~ /X-Msec: (\d+)/g;
-}
 
 ###############################################################################

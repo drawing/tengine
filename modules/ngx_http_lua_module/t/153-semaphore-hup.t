@@ -104,7 +104,6 @@ run_tests();
 __DATA__
 
 === TEST 1: timer + reload
---- quic_max_idle_timeout: 1.1
 --- config
     location /test {
         content_by_lua_block {
@@ -130,7 +129,6 @@ created semaphore object
 
 
 === TEST 2: timer + reload (lua code cache off)
---- quic_max_idle_timeout: 1.1
 --- http_config
     lua_code_cache off;
 --- config

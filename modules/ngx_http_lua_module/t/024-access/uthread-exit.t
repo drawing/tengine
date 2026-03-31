@@ -880,7 +880,6 @@ after
 
 
 === TEST 11: exit in user thread (entry thread is still pending on reqsock:receive)
---- skip_eval: 5:$ENV{TEST_NGINX_USE_HTTP3}
 --- config
     location /lua {
         access_by_lua '
@@ -974,7 +973,6 @@ after
 
 
 === TEST 12: exit in user thread (entry thread is still pending on ngx.req.read_body)
---- skip_eval: 3:$ENV{TEST_NGINX_USE_HTTP3}
 --- config
     location /lua {
         client_body_timeout 12000ms;

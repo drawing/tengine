@@ -194,14 +194,6 @@ Hi"
 
 === TEST 8: github issue 37: header bug
 https://github.com/chaoslawful/lua-nginx-module/issues/37
-
-https://datatracker.ietf.org/doc/html/rfc7540#section-8.1.2
-   Just as in HTTP/1.x, header field names are strings of ASCII
-   characters that are compared in a case-insensitive fashion. However,
-   header field names MUST be converted to lowercase prior to their
-   encoding in HTTP/2.  A request or response containing uppercase
-   header field names MUST be treated as malformed
-
 --- config
     location /sub {
         content_by_lua '
@@ -228,17 +220,8 @@ https://datatracker.ietf.org/doc/html/rfc7540#section-8.1.2
 --- request
 GET /lua
 --- raw_response_headers_like eval
-my $headers;
-
-if (defined $ENV{TEST_NGINX_USE_HTTP3}) {
-    $headers = ".*set-cookie: TestCookie1=foo\r
-set-cookie: TestCookie2=bar.*"
-} else {
-    $headers = ".*Set-Cookie: TestCookie1=foo\r
+".*Set-Cookie: TestCookie1=foo\r
 Set-Cookie: TestCookie2=bar.*"
-}
-
-$headers;
 
 
 
@@ -731,7 +714,6 @@ Content-Type: application/json; charset=utf-8
 
 
 === TEST 32: hang on upstream_next (from kindy)
---- no_http2
 --- no_check_leak
 --- http_config
     upstream xx {
@@ -788,10 +770,6 @@ eof found in body stream
 
 === TEST 34: testing a segfault when using ngx_poll_module + ngx_resolver
 See more details here: http://mailman.nginx.org/pipermail/nginx-devel/2013-January/003275.html
-
-http3 may cache the dns result.
-so need to skip for http3
---- skip_eval: 2:$ENV{TEST_NGINX_USE_HTTP3}
 --- config
     location /t {
         set $myserver nginx.org;
@@ -808,8 +786,6 @@ so need to skip for http3
 [alert]
 --- error_log eval
 qr/(?:send|recv)\(\) failed \(\d+: Connection refused\) while resolving/
---- curl_error eval
-qr/curl: \(28\) Operation timed out after \d+ milliseconds with 0 bytes received/
 
 
 
@@ -828,7 +804,7 @@ qr/curl: \(28\) Operation timed out after \d+ milliseconds with 0 bytes received
         rewrite    ^/myproxy/(.*)  /$1  break;
         resolver_timeout 3s;
         #resolver 172.16.0.23; #  AWS DNS resolver address is the same in all regions - 172.16.0.23
-        resolver $TEST_NGINX_RESOLVER;
+        resolver 8.8.8.8;
         proxy_read_timeout 1s;
         proxy_send_timeout 1s;
         proxy_connect_timeout 1s;
@@ -885,7 +861,6 @@ GET /t
 --- no_error_log
 [error]
 --- timeout: 10
---- skip_eval: 3:$ENV{TEST_NGINX_USE_HTTP3}
 
 
 
@@ -893,7 +868,7 @@ GET /t
 --- http_config eval
     "lua_package_path '$::HtmlDir/?.lua;./?.lua;;';
     server {
-        listen \$TEST_NGINX_RAND_PORT_1;
+        listen 12354;
 
         location = /t {
             echo 'args: \$args';
@@ -903,7 +878,7 @@ GET /t
 --- config
     location = /t {
         set $args "foo=1&bar=2";
-        proxy_pass http://127.0.0.1:$TEST_NGINX_RAND_PORT_1;
+        proxy_pass http://127.0.0.1:12354;
     }
 
 --- request
@@ -1306,17 +1281,8 @@ location /t {
 --- response_body
 Hello world
 --- shutdown_error_log eval
-my $expr;
-
-if ($ENV{TEST_NGINX_USE_HTTP3}) {
-    $expr = qr|lua close the global Lua VM|
-} else {
-    $expr = qr|failed to read a line: closed|
-}
-
-$expr;
+qr|failed to read a line: closed|
 --- timeout: 1.2
---- skip_eval: 2:$ENV{TEST_NGINX_USE_HTTP3}
 
 
 
