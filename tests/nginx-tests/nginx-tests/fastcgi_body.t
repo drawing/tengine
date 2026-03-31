@@ -10,7 +10,6 @@ use warnings;
 use strict;
 
 use Test::More;
-use Socket qw/ CRLF /;
 
 BEGIN { use FindBin; chdir($FindBin::Bin); }
 
@@ -60,10 +59,27 @@ like(http_get_length('/', ''), qr/X-Body: _eos\x0d?$/ms, 'fastcgi empty body');
 like(http_get_length('/', 'foobar'), qr/X-Body: foobar_eos\x0d?$/ms,
 	'fastcgi body');
 
-like(http_get_chunked('/', 'foobar'), qr/X-Body: foobar_eos\x0d?$/ms,
-	'fastcgi chunked');
-like(http_get_chunked('/', ''), qr/X-Body: _eos\x0d?$/ms,
-	'fastcgi empty chunked');
+like(http(<<EOF), qr/X-Body: foobar_eos\x0d?$/ms, 'fastcgi chunked');
+GET / HTTP/1.1
+Host: localhost
+Connection: close
+Transfer-Encoding: chunked
+
+6
+foobar
+0
+
+EOF
+
+like(http(<<EOF), qr/X-Body: _eos\x0d?$/ms, 'fastcgi empty chunked');
+GET / HTTP/1.1
+Host: localhost
+Connection: close
+Transfer-Encoding: chunked
+
+0
+
+EOF
 
 ###############################################################################
 
@@ -77,20 +93,6 @@ Connection: close
 Content-Length: $length
 
 $body
-EOF
-}
-
-sub http_get_chunked {
-	my ($url, $body) = @_;
-	my $length = sprintf("%x", length $body);
-	$body = $length ? $length . CRLF . $body . CRLF : '';
-	$body .= '0' . CRLF . CRLF;
-	return http(<<EOF . $body);
-GET $url HTTP/1.1
-Host: localhost
-Connection: close
-Transfer-Encoding: chunked
-
 EOF
 }
 

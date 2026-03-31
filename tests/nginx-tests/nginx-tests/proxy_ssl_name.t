@@ -108,8 +108,6 @@ http {
         ssl_certificate localhost.crt;
         ssl_certificate_key localhost.key;
 
-        keepalive_requests 1;
-
         add_header X-Name $ssl_server_name,;
     }
 }
