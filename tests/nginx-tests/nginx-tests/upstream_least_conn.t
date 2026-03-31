@@ -65,7 +65,7 @@ $t->waitforsocket('127.0.0.1:' . port(8082));
 
 my @ports = my ($port1, $port2) = (port(8081), port(8082));
 
-like(many('/', 10), qr/$port1: \d+, $port2: \d+/, 'balanced');
+is(many('/', 10), "$port1: 5, $port2: 5", 'balanced');
 
 my @sockets;
 push(@sockets, http_get('/w', start => 1));
@@ -73,7 +73,7 @@ push(@sockets, http_get('/w', start => 1));
 
 select undef, undef, undef, 0.2;
 
-like(many('/w', 10), qr/$port2: \d+/, 'least conn');
+is(many('/w', 10), "$port2: 10", 'least conn');
 
 ###############################################################################
 
