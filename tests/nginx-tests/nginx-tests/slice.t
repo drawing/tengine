@@ -22,6 +22,13 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
+my $t = Test::Nginx->new()->has(qw/http proxy cache fastcgi slice rewrite/)
+	->plan(79);
+
+$t->write_file_expand('nginx.conf', <<'EOF');
+
+%%TEST_GLOBALS%%
+
 daemon off;
 
 events {

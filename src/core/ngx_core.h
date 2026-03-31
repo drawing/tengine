@@ -26,11 +26,19 @@ typedef struct ngx_event_aio_s       ngx_event_aio_t;
 typedef struct ngx_connection_s      ngx_connection_t;
 typedef struct ngx_thread_task_s     ngx_thread_task_t;
 typedef struct ngx_ssl_s             ngx_ssl_t;
-typedef struct ngx_ssl_cache_s       ngx_ssl_cache_t;
 typedef struct ngx_proxy_protocol_s  ngx_proxy_protocol_t;
-typedef struct ngx_quic_stream_s     ngx_quic_stream_t;
 typedef struct ngx_ssl_connection_s  ngx_ssl_connection_t;
 typedef struct ngx_udp_connection_s  ngx_udp_connection_t;
+
+#if (T_NGX_UDPV2)
+typedef struct ngx_udpv2_packet_st                          ngx_udpv2_packet_t;
+typedef struct ngx_udpv2_packets_hdr_st                     ngx_udpv2_packets_hdr_t;
+typedef struct ngx_udpv2_traffic_filter_st                  ngx_udpv2_traffic_filter_t;
+#endif
+
+#if (T_NGX_HAVE_XUDP)
+#include <ngx_xudp_inc.h>
+#endif
 
 typedef void (*ngx_event_handler_pt)(ngx_event_t *ev);
 typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
@@ -61,6 +69,7 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #include <ngx_parse_time.h>
 #include <ngx_log.h>
 #include <ngx_alloc.h>
+#include <ngx_sysinfo.h>
 #include <ngx_palloc.h>
 #include <ngx_buf.h>
 #include <ngx_queue.h>
@@ -74,7 +83,9 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #if (NGX_PCRE)
 #include <ngx_regex.h>
 #endif
+#include <ngx_trie.h>
 #include <ngx_radix_tree.h>
+#include <ngx_segment_tree.h>
 #include <ngx_times.h>
 #include <ngx_rwlock.h>
 #include <ngx_shmtx.h>
@@ -96,8 +107,11 @@ typedef void (*ngx_connection_handler_pt)(ngx_connection_t *c);
 #include <ngx_connection.h>
 #include <ngx_syslog.h>
 #include <ngx_proxy_protocol.h>
-#if (NGX_HAVE_BPF)
-#include <ngx_bpf.h>
+#if (T_PIPES)
+#include <ngx_pipe.h>
+#endif
+#if (NGX_PROCS)
+#include <ngx_proc.h>
 #endif
 
 
