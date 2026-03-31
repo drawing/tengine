@@ -15,8 +15,6 @@
 
 
 typedef struct {
-    ngx_rbtree_node_t            node;
-
     ngx_str_t                    staple;
     ngx_msec_t                   timeout;
 
@@ -156,7 +154,6 @@ static ngx_int_t ngx_ssl_stapling_responder(ngx_conf_t *cf, ngx_ssl_t *ssl,
 
 static int ngx_ssl_certificate_status_callback(ngx_ssl_conn_t *ssl_conn,
     void *data);
-static ngx_ssl_stapling_t *ngx_ssl_stapling_lookup(ngx_ssl_t *ssl, X509 *cert);
 static void ngx_ssl_stapling_update(ngx_ssl_stapling_t *staple);
 static void ngx_ssl_stapling_ocsp_handler(ngx_ssl_ocsp_ctx_t *ctx);
 
@@ -198,12 +195,12 @@ ngx_int_t
 ngx_ssl_stapling(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file,
     ngx_str_t *responder, ngx_uint_t verify)
 {
-    X509        *cert;
-    ngx_uint_t   k;
+    X509  *cert;
 
-    for (k = 0; k < ssl->certs.nelts; k++) {
-        cert = ((X509 **) ssl->certs.elts)[k];
-
+    for (cert = SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index);
+         cert;
+         cert = X509_get_ex_data(cert, ngx_ssl_next_certificate_index))
+    {
         if (ngx_ssl_stapling_certificate(cf, ssl, cert, file, responder, verify)
             != NGX_OK)
         {
@@ -238,9 +235,10 @@ ngx_ssl_stapling_certificate(ngx_conf_t *cf, ngx_ssl_t *ssl, X509 *cert,
     cln->handler = ngx_ssl_stapling_cleanup;
     cln->data = staple;
 
-    staple->node.key = (ngx_rbtree_key_t) cert;
-
-    ngx_rbtree_insert(&ssl->staple_rbtree, &staple->node);
+    if (X509_set_ex_data(cert, ngx_ssl_stapling_index, staple) == 0) {
+        ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0, "X509_set_ex_data() failed");
+        return NGX_ERROR;
+    }
 
 #ifdef SSL_CTRL_SELECT_CURRENT_CERT
     /* OpenSSL 1.0.2+ */
@@ -547,21 +545,14 @@ ngx_int_t
 ngx_ssl_stapling_resolver(ngx_conf_t *cf, ngx_ssl_t *ssl,
     ngx_resolver_t *resolver, ngx_msec_t resolver_timeout)
 {
-    ngx_rbtree_t        *tree;
-    ngx_rbtree_node_t   *node;
+    X509                *cert;
     ngx_ssl_stapling_t  *staple;
 
-    tree = &ssl->staple_rbtree;
-
-    if (tree->root == tree->sentinel) {
-        return NGX_OK;
-    }
-
-    for (node = ngx_rbtree_min(tree->root, tree->sentinel);
-         node;
-         node = ngx_rbtree_next(tree, node))
+    for (cert = SSL_CTX_get_ex_data(ssl->ctx, ngx_ssl_certificate_index);
+         cert;
+         cert = X509_get_ex_data(cert, ngx_ssl_next_certificate_index))
     {
-        staple = ngx_rbtree_data(node, ngx_ssl_stapling_t, node);
+        staple = X509_get_ex_data(cert, ngx_ssl_stapling_index);
         staple->resolver = resolver;
         staple->resolver_timeout = resolver_timeout;
     }
@@ -576,8 +567,6 @@ ngx_ssl_certificate_status_callback(ngx_ssl_conn_t *ssl_conn, void *data)
     int                  rc;
     X509                *cert;
     u_char              *p;
-    SSL_CTX             *ssl_ctx;
-    ngx_ssl_t           *ssl;
     ngx_connection_t    *c;
     ngx_ssl_stapling_t  *staple;
 
@@ -594,10 +583,7 @@ ngx_ssl_certificate_status_callback(ngx_ssl_conn_t *ssl_conn, void *data)
         return rc;
     }
 
-    ssl_ctx = SSL_get_SSL_CTX(ssl_conn);
-    ssl = SSL_CTX_get_ex_data(ssl_ctx, ngx_ssl_index);
-
-    staple = ngx_ssl_stapling_lookup(ssl, cert);
+    staple = X509_get_ex_data(cert, ngx_ssl_stapling_index);
 
     if (staple == NULL) {
         return rc;
@@ -624,30 +610,6 @@ ngx_ssl_certificate_status_callback(ngx_ssl_conn_t *ssl_conn, void *data)
     ngx_ssl_stapling_update(staple);
 
     return rc;
-}
-
-
-static ngx_ssl_stapling_t *
-ngx_ssl_stapling_lookup(ngx_ssl_t *ssl, X509 *cert)
-{
-    ngx_rbtree_key_t    key;
-    ngx_rbtree_node_t  *node, *sentinel;
-
-    node = ssl->staple_rbtree.root;
-    sentinel = ssl->staple_rbtree.sentinel;
-    key = (ngx_rbtree_key_t) cert;
-
-    while (node != sentinel) {
-
-        if (key != node->key) {
-            node = (key < node->key) ? node->left : node->right;
-            continue;
-        }
-
-        return ngx_rbtree_data(node, ngx_ssl_stapling_t, node);
-    }
-
-    return NULL;
 }
 
 
@@ -931,7 +893,7 @@ ngx_ssl_ocsp_validate(ngx_connection_t *c)
     ocsp->cert_status = V_OCSP_CERTSTATUS_GOOD;
     ocsp->conf = ocf;
 
-#if OPENSSL_VERSION_NUMBER >= 0x10100000L
+#if (OPENSSL_VERSION_NUMBER >= 0x10100000L && !defined LIBRESSL_VERSION_NUMBER)
 
     ocsp->certs = SSL_get0_verified_chain(c->ssl->connection);
 

@@ -43,6 +43,7 @@ daemon off;
 events {
 }
 
+
 http {
     %%TEST_GLOBALS_HTTP%%
 
@@ -56,7 +57,6 @@ http {
     ssl_certificate_key end.key;
 
     ssl_ciphers DEFAULT:ECCdraft;
-
     add_header X-SSL-Protocol $ssl_protocol always;
 
     server {
@@ -125,10 +125,7 @@ $t->write_file('openssl.conf', <<EOF);
 default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
-x509_extensions = myca_extensions
 [ req_distinguished_name ]
-[ myca_extensions ]
-basicConstraints = critical,CA:TRUE
 EOF
 
 $t->write_file('ca.conf', <<EOF);
@@ -247,6 +244,7 @@ $t->waitforsocket("127.0.0.1:" . port(8081));
 
 ###############################################################################
 
+
 staple(8443, 'RSA');
 staple(8443, 'ECDSA');
 staple(8444, 'RSA');
@@ -258,25 +256,19 @@ staple(8449, 'ECDSA');
 sleep 1;
 
 ok(!staple(8443, 'RSA'), 'staple revoked');
-
 TODO: {
 local $TODO = 'broken TLSv1.3 sigalgs in LibreSSL'
 	if $t->has_module('LibreSSL') && test_tls13();
-
 ok(staple(8443, 'ECDSA'), 'staple success');
 
 }
-
 ok(!staple(8444, 'RSA'), 'responder revoked');
-
 TODO: {
 local $TODO = 'broken TLSv1.3 sigalgs in LibreSSL'
 	if $t->has_module('LibreSSL') && test_tls13();
-
 ok(staple(8444, 'ECDSA'), 'responder success');
 
 }
-
 ok(!staple(8445, 'ECDSA'), 'verify - root not trusted');
 
 ok(staple(8446, 'ECDSA', "$d/int.crt"), 'cert store');
@@ -288,13 +280,9 @@ ok(!staple(8449, 'ECDSA'), 'ocsp error');
 
 TODO: {
 local $TODO = 'broken TLSv1.3 sigalgs in LibreSSL'
-	if $t->has_module('LibreSSL') && test_tls13()
-	and not $t->has_feature('libressl:4.0.0');
-
+	if $t->has_module('LibreSSL') && test_tls13();
 like(`grep -F '[crit]' ${\($t->testdir())}/error.log`, qr/^$/s, 'no crit');
-
 }
-
 ###############################################################################
 
 sub staple {
@@ -305,13 +293,10 @@ sub staple {
 		my ($s, $resp) = @_;
 		push @resp, !!$resp;
 		return 1 unless $resp;
-
 		# Contrary to the documentation, IO::Socket::SSL calls the
 		# SSL_ocsp_staple_callback with the socket, and not the
 		# Net::SSLeay object.
-
 		my $ssl = $s->_get_ssl_object();
-
 		my $cert = Net::SSLeay::get_peer_certificate($ssl);
 		my $certid = eval { Net::SSLeay::OCSP_cert2ids($ssl, $cert) }
 			or do { die "no OCSP_CERTID for certificate: $@"; };
@@ -322,8 +307,12 @@ sub staple {
 
 	my $ctx_cb = sub {
 		my $ctx = shift;
+
+
 		return unless defined $ciphers;
-		my $ssleay = Net::SSLeay::SSLeay();
+
+
+	my $ssleay = Net::SSLeay::SSLeay();
 		return if ($ssleay < 0x1000200f || $ssleay == 0x20000000);
 		my @sigalgs = ('RSA+SHA256:PSS+SHA256', 'RSA+SHA256');
 		@sigalgs = ($ciphers . '+SHA256') unless $ciphers eq 'RSA';
@@ -349,6 +338,10 @@ sub staple {
 
 sub test_tls13 {
 	return http_get('/', SSL => 1) =~ /TLSv1.3/;
+
+
+
+
 }
 
 ###############################################################################

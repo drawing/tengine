@@ -22,6 +22,7 @@ use Test::Nginx;
 select STDERR; $| = 1;
 select STDOUT; $| = 1;
 
+
 my $t = Test::Nginx->new()->has(qw/http http_ssl rewrite socket_ssl/)
 	->has_daemon('openssl')->plan(3);
 
@@ -94,9 +95,11 @@ sub cert {
 	return http_get(
 		$uri,
 		SSL => 1,
-		SSL_cert_file => "$d/localhost.crt",
+			SSL_cert_file => "$d/localhost.crt",
 		SSL_key_file => "$d/localhost.key"
-	);
+		);
+
+
 }
 
 ###############################################################################
