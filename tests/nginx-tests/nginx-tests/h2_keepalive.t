@@ -38,10 +38,8 @@ events {
 http {
     %%TEST_GLOBALS_HTTP%%
 
-    http2 on;
-
     server {
-        listen       127.0.0.1:8080 sndbuf=1m;
+        listen       127.0.0.1:8080 http2 sndbuf=1m;
         server_name  localhost;
 
         keepalive_requests 2;
@@ -50,7 +48,7 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8081;
+        listen       127.0.0.1:8081 http2;
         server_name  localhost;
 
         keepalive_timeout 0;
@@ -59,7 +57,7 @@ http {
     }
 
     server {
-        listen       127.0.0.1:8082;
+        listen       127.0.0.1:8082 http2;
         server_name  localhost;
 
         keepalive_time 1s;
@@ -74,7 +72,11 @@ EOF
 
 $t->write_file('index.html', 'SEE-THAT' x 50000);
 $t->write_file('t.html', 'SEE-THAT');
+
+# suppress deprecation warning
+open OLDERR, ">&", \*STDERR; close STDERR;
 $t->run();
+open STDERR, ">&", \*OLDERR;
 
 ###############################################################################
 
