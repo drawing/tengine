@@ -1069,14 +1069,6 @@ ngx_http_ssl_servername(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 #ifdef SSL_OP_NO_RENEGOTIATION
         SSL_set_options(ssl_conn, SSL_OP_NO_RENEGOTIATION);
 #endif
-
-#ifdef SSL_OP_ENABLE_MIDDLEBOX_COMPAT
-#if (NGX_HTTP_V3)
-        if (c->listening->quic) {
-            SSL_clear_options(ssl_conn, SSL_OP_ENABLE_MIDDLEBOX_COMPAT);
-        }
-#endif
-#endif
     }
 
 done:
@@ -2258,24 +2250,28 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
             r->request_end = new + (r->request_end - old);
         }
 
-        if (r->method_end) {
-            r->method_end = new + (r->method_end - old);
-        }
+        r->method_end = new + (r->method_end - old);
 
-        if (r->uri_start) {
-            r->uri_start = new + (r->uri_start - old);
-        }
-
-        if (r->uri_end) {
-            r->uri_end = new + (r->uri_end - old);
-        }
+        r->uri_start = new + (r->uri_start - old);
+        r->uri_end = new + (r->uri_end - old);
 
         if (r->schema_start) {
             r->schema_start = new + (r->schema_start - old);
-            if (r->schema_end) {
-                r->schema_end = new + (r->schema_end - old);
+            r->schema_end = new + (r->schema_end - old);
+        }
+
+#if (NGX_HTTP_PROXY_CONNECT)
+        if (r->connect_host_start) {
+            r->connect_host_start = new + (r->connect_host_start - old);
+            if (r->connect_host_end) {
+                r->connect_host_end = new + (r->connect_host_end - old);
+            }
+
+            if (r->connect_port_end) {
+                r->connect_port_end = new + (r->connect_port_end - old);
             }
         }
+#endif
 
 #if (NGX_HTTP_PROXY_CONNECT)
         if (r->connect_host_start) {
@@ -2297,6 +2293,11 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
             }
         }
 
+        if (r->port_start) {
+            r->port_start = new + (r->port_start - old);
+            r->port_end = new + (r->port_end - old);
+        }
+
         if (r->uri_ext) {
             r->uri_ext = new + (r->uri_ext - old);
         }
@@ -2311,18 +2312,9 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
 
     } else {
         r->header_name_start = new;
-
-        if (r->header_name_end) {
-            r->header_name_end = new + (r->header_name_end - old);
-        }
-
-        if (r->header_start) {
-            r->header_start = new + (r->header_start - old);
-        }
-
-        if (r->header_end) {
-            r->header_end = new + (r->header_end - old);
-        }
+        r->header_name_end = new + (r->header_name_end - old);
+        r->header_start = new + (r->header_start - old);
+        r->header_end = new + (r->header_end - old);
     }
 
     r->header_in = b;
@@ -3282,8 +3274,6 @@ ngx_http_terminate_request(ngx_http_request_t *r, ngx_int_t rc)
     ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                    "http terminate request count:%d", mr->count);
 
-    mr->terminated = 1;
-
     if (rc > 0 && (mr->headers_out.status == 0 || mr->connection->sent == 0)) {
         mr->headers_out.status = rc;
     }
@@ -3306,11 +3296,8 @@ ngx_http_terminate_request(ngx_http_request_t *r, ngx_int_t rc)
     if (mr->write_event_handler) {
 
         if (mr->blocked) {
-            r = r->connection->data;
-
             r->connection->error = 1;
             r->write_event_handler = ngx_http_request_finalizer;
-
             return;
         }
 
@@ -3384,13 +3371,6 @@ ngx_http_finalize_connection(ngx_http_request_t *r)
     if (r->reading_body) {
         r->keepalive = 0;
         r->lingering_close = 1;
-    }
-
-    if (r->keepalive
-        && clcf->keepalive_min_timeout > 0)
-    {
-        ngx_http_set_keepalive(r);
-        return;
     }
 
     if (!ngx_terminate
@@ -3919,22 +3899,10 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
     r->http_state = NGX_HTTP_KEEPALIVE_STATE;
 #endif
 
-    if (clcf->keepalive_min_timeout == 0) {
-        c->idle = 1;
-        ngx_reusable_connection(c, 1);
-    }
+    c->idle = 1;
+    ngx_reusable_connection(c, 1);
 
-    if (clcf->keepalive_min_timeout > 0
-        && clcf->keepalive_timeout > clcf->keepalive_min_timeout)
-    {
-        hc->keepalive_timeout = clcf->keepalive_timeout
-                                - clcf->keepalive_min_timeout;
-
-    } else {
-        hc->keepalive_timeout = 0;
-    }
-
-    ngx_add_timer(rev, clcf->keepalive_timeout - hc->keepalive_timeout);
+    ngx_add_timer(rev, clcf->keepalive_timeout);
 
     if (rev->ready) {
         ngx_post_event(rev, &ngx_posted_events);
@@ -3945,31 +3913,14 @@ ngx_http_set_keepalive(ngx_http_request_t *r)
 static void
 ngx_http_keepalive_handler(ngx_event_t *rev)
 {
-    size_t                  size;
-    ssize_t                 n;
-    ngx_buf_t              *b;
-    ngx_connection_t       *c;
-    ngx_http_connection_t  *hc;
+    size_t             size;
+    ssize_t            n;
+    ngx_buf_t         *b;
+    ngx_connection_t  *c;
 
     c = rev->data;
-    hc = c->data;
 
     ngx_log_debug0(NGX_LOG_DEBUG_HTTP, c->log, 0, "http keepalive handler");
-
-    if (!ngx_terminate
-         && !ngx_exiting
-         && rev->timedout
-         && hc->keepalive_timeout > 0)
-    {
-        c->idle = 1;
-        ngx_reusable_connection(c, 1);
-
-        ngx_add_timer(rev, hc->keepalive_timeout);
-
-        hc->keepalive_timeout = 0;
-        rev->timedout = 0;
-        return;
-    }
 
     if (rev->timedout || c->close) {
         ngx_http_close_connection(c);

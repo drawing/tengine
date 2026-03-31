@@ -337,30 +337,12 @@ ngx_ssl_write_async_handler(ngx_event_t *aev)
 ngx_int_t
 ngx_ssl_init(ngx_log_t *log)
 {
-#if (OPENSSL_INIT_LOAD_CONFIG && !defined LIBRESSL_VERSION_NUMBER)
+#if OPENSSL_VERSION_NUMBER >= 0x10100003L
 
-    OPENSSL_INIT_SETTINGS  *init;
-
-    init = OPENSSL_INIT_new();
-    if (init == NULL) {
-        ngx_ssl_error(NGX_LOG_ALERT, log, 0, "OPENSSL_INIT_new() failed");
-        return NGX_ERROR;
-    }
-
-#ifndef OPENSSL_NO_STDIO
-    if (OPENSSL_INIT_set_config_appname(init, "nginx") == 0) {
-        ngx_ssl_error(NGX_LOG_ALERT, log, 0,
-                      "OPENSSL_INIT_set_config_appname() failed");
-        return NGX_ERROR;
-    }
-#endif
-
-    if (OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, init) == 0) {
+    if (OPENSSL_init_ssl(OPENSSL_INIT_LOAD_CONFIG, NULL) == 0) {
         ngx_ssl_error(NGX_LOG_ALERT, log, 0, "OPENSSL_init_ssl() failed");
         return NGX_ERROR;
     }
-
-    OPENSSL_INIT_free(init);
 
     /*
      * OPENSSL_init_ssl() may leave errors in the error queue
@@ -371,7 +353,7 @@ ngx_ssl_init(ngx_log_t *log)
 
 #else
 
-    OPENSSL_config("nginx");
+    OPENSSL_config(NULL);
 
     SSL_library_init();
     SSL_load_error_strings();
@@ -1055,12 +1037,12 @@ ngx_ssl_load_certificate_key(ngx_pool_t *pool, char **err,
 
         engine = ENGINE_by_id((char *) p);
 
-        *last++ = ':';
-
         if (engine == NULL) {
             *err = "ENGINE_by_id() failed";
             return NULL;
         }
+
+        *last++ = ':';
 
         pkey = ENGINE_load_private_key(engine, (char *) last, 0, 0);
 
@@ -1396,8 +1378,7 @@ ngx_ssl_info_callback(const ngx_ssl_conn_t *ssl_conn, int where, int ret)
     BIO               *rbio, *wbio;
     ngx_connection_t  *c;
 
-#if (!defined SSL_OP_NO_RENEGOTIATION                                         \
-     && !defined SSL_OP_NO_CLIENT_RENEGOTIATION)
+#ifndef SSL_OP_NO_RENEGOTIATION
 
     if ((where & SSL_CB_HANDSHAKE_START)
         && SSL_is_server((ngx_ssl_conn_t *) ssl_conn))
@@ -1698,8 +1679,6 @@ ngx_ssl_passwords_cleanup(void *data)
 ngx_int_t
 ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
 {
-#ifndef OPENSSL_NO_DH
-
     BIO  *bio;
 
     if (file->len == 0) {
@@ -1758,7 +1737,7 @@ ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
 
     if (SSL_CTX_set0_tmp_dh_pkey(ssl->ctx, dh) != 1) {
         ngx_ssl_error(NGX_LOG_EMERG, ssl->log, 0,
-                      "SSL_CTX_set0_tmp_dh_pkey(\"%s\") failed", file->data);
+                      "SSL_CTX_set0_tmp_dh_pkey(\%s\") failed", file->data);
 #if (OPENSSL_VERSION_NUMBER >= 0x3000001fL)
         EVP_PKEY_free(dh);
 #endif
@@ -1769,8 +1748,6 @@ ngx_ssl_dhparam(ngx_conf_t *cf, ngx_ssl_t *ssl, ngx_str_t *file)
 #endif
 
     BIO_free(bio);
-
-#endif
 
     return NGX_OK;
 }
@@ -2169,16 +2146,17 @@ ngx_ssl_handshake(ngx_connection_t *c)
         c->read->ready = 1;
         c->write->ready = 1;
 
-#if (!defined SSL_OP_NO_RENEGOTIATION                                         \
-     && !defined SSL_OP_NO_CLIENT_RENEGOTIATION                               \
-     && defined SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS                             \
-     && OPENSSL_VERSION_NUMBER < 0x10100000L)
+#ifndef SSL_OP_NO_RENEGOTIATION
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+#ifdef SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS
 
         /* initial handshake done, disable renegotiation (CVE-2009-3555) */
         if (c->ssl->connection->s3 && SSL_is_server(c->ssl->connection)) {
             c->ssl->connection->s3->flags |= SSL3_FLAGS_NO_RENEGOTIATE_CIPHERS;
         }
 
+#endif
+#endif
 #endif
 
 #if (defined BIO_get_ktls_send && !NGX_WIN32)
@@ -2920,8 +2898,7 @@ ngx_ssl_handle_recv(ngx_connection_t *c, int n)
     int        sslerr;
     ngx_err_t  err;
 
-#if (!defined SSL_OP_NO_RENEGOTIATION                                         \
-     && !defined SSL_OP_NO_CLIENT_RENEGOTIATION)
+#ifndef SSL_OP_NO_RENEGOTIATION
 
     if (c->ssl->renegotiation) {
         /*
@@ -4726,12 +4703,12 @@ ngx_ssl_get_cached_session(ngx_ssl_conn_t *ssl_conn,
     const u_char             *p;
     ngx_shm_zone_t           *shm_zone;
     ngx_slab_pool_t          *shpool;
-    ngx_connection_t         *c;
     ngx_rbtree_node_t        *node, *sentinel;
     ngx_ssl_session_t        *sess;
     ngx_ssl_sess_id_t        *sess_id;
     ngx_ssl_session_cache_t  *cache;
     u_char                    buf[NGX_SSL_MAX_SESSION_SIZE];
+    ngx_connection_t         *c;
 
     hash = ngx_crc32_short((u_char *) (uintptr_t) id, (size_t) len);
     *copy = 0;
@@ -5733,8 +5710,7 @@ ngx_ssl_get_curve(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
 #ifdef SSL_get_negotiated_group
 
-    int          nid;
-    const char  *name;
+    int  nid;
 
     nid = SSL_get_negotiated_group(c->ssl->connection);
 
@@ -5746,24 +5722,14 @@ ngx_ssl_get_curve(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
             return NGX_OK;
         }
 
-#if (OPENSSL_VERSION_NUMBER >= 0x3000000fL)
-        name = SSL_group_to_name(c->ssl->connection, nid);
-#else
-        name = NULL;
-#endif
+        s->len = sizeof("0x0000") - 1;
 
-        s->len = name ? ngx_strlen(name) : sizeof("0x0000") - 1;
         s->data = ngx_pnalloc(pool, s->len);
         if (s->data == NULL) {
             return NGX_ERROR;
         }
 
-        if (name) {
-            ngx_memcpy(s->data, name, s->len);
-
-        } else {
-            ngx_sprintf(s->data, "0x%04xd", nid & 0xffff);
-        }
+        ngx_sprintf(s->data, "0x%04xd", nid & 0xffff);
 
         return NGX_OK;
     }
@@ -5783,7 +5749,6 @@ ngx_ssl_get_curves(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     int         *curves, n, i, nid;
     u_char      *p;
     size_t       len;
-    const char  *name;
 
     n = SSL_get1_curves(c->ssl->connection, NULL);
 
@@ -5793,9 +5758,6 @@ ngx_ssl_get_curves(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
     }
 
     curves = ngx_palloc(pool, n * sizeof(int));
-    if (curves == NULL) {
-        return NGX_ERROR;
-    }
 
     n = SSL_get1_curves(c->ssl->connection, curves);
     len = 0;
@@ -5804,13 +5766,7 @@ ngx_ssl_get_curves(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
         nid = curves[i];
 
         if (nid & TLSEXT_nid_unknown) {
-#if (OPENSSL_VERSION_NUMBER >= 0x3000000fL)
-            name = SSL_group_to_name(c->ssl->connection, nid);
-#else
-            name = NULL;
-#endif
-
-            len += name ? ngx_strlen(name) : sizeof("0x0000") - 1;
+            len += sizeof("0x0000") - 1;
 
         } else {
             len += ngx_strlen(OBJ_nid2sn(nid));
@@ -5830,14 +5786,7 @@ ngx_ssl_get_curves(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
         nid = curves[i];
 
         if (nid & TLSEXT_nid_unknown) {
-#if (OPENSSL_VERSION_NUMBER >= 0x3000000fL)
-            name = SSL_group_to_name(c->ssl->connection, nid);
-#else
-            name = NULL;
-#endif
-
-            p = name ? ngx_cpymem(p, name, ngx_strlen(name))
-                     : ngx_sprintf(p, "0x%04xd", nid & 0xffff);
+            p = ngx_sprintf(p, "0x%04xd", nid & 0xffff);
 
         } else {
             p = ngx_sprintf(p, "%s", OBJ_nid2sn(nid));

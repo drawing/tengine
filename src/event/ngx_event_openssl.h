@@ -19,9 +19,7 @@
 #include <openssl/bn.h>
 #include <openssl/conf.h>
 #include <openssl/crypto.h>
-#ifndef OPENSSL_NO_DH
 #include <openssl/dh.h>
-#endif
 #ifndef OPENSSL_NO_ENGINE
 #include <openssl/engine.h>
 #endif
@@ -39,7 +37,7 @@
 
 #if (defined LIBRESSL_VERSION_NUMBER && OPENSSL_VERSION_NUMBER == 0x20000000L)
 #undef OPENSSL_VERSION_NUMBER
-#if (LIBRESSL_VERSION_NUMBER >= 0x3050000fL)
+#if (LIBRESSL_VERSION_NUMBER >= 0x2080000fL)
 #define OPENSSL_VERSION_NUMBER  0x1010000fL
 #else
 #define OPENSSL_VERSION_NUMBER  0x1000107fL
@@ -152,7 +150,7 @@ struct ngx_ssl_connection_s {
 #define NGX_SSL_DFLT_BUILTIN_SCACHE  -5
 
 
-#define NGX_SSL_MAX_SESSION_SIZE  8192
+#define NGX_SSL_MAX_SESSION_SIZE  4096
 
 typedef struct ngx_ssl_sess_id_s  ngx_ssl_sess_id_t;
 
@@ -243,11 +241,6 @@ ngx_int_t ngx_ssl_ocsp_validate(ngx_connection_t *c);
 ngx_int_t ngx_ssl_ocsp_get_status(ngx_connection_t *c, const char **s);
 void ngx_ssl_ocsp_cleanup(ngx_connection_t *c);
 ngx_int_t ngx_ssl_ocsp_cache_init(ngx_shm_zone_t *shm_zone, void *data);
-
-void *ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
-    ngx_str_t *path, void *data);
-void *ngx_ssl_cache_connection_fetch(ngx_pool_t *pool, ngx_uint_t index,
-    char **err, ngx_str_t *path, void *data);
 
 ngx_array_t *ngx_ssl_read_password_file(ngx_conf_t *cf, ngx_str_t *file);
 ngx_array_t *ngx_ssl_preserve_passwords(ngx_conf_t *cf,

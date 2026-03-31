@@ -498,7 +498,7 @@ static ngx_command_t  ngx_http_proxy_commands[] = {
 
     { ngx_string("proxy_limit_rate"),
       NGX_HTTP_MAIN_CONF|NGX_HTTP_SRV_CONF|NGX_HTTP_LOC_CONF|NGX_CONF_TAKE1,
-      ngx_http_set_complex_value_size_slot,
+      ngx_conf_set_size_slot,
       NGX_HTTP_LOC_CONF_OFFSET,
       offsetof(ngx_http_proxy_loc_conf_t, upstream.limit_rate),
       NULL },
@@ -1256,8 +1256,7 @@ ngx_http_proxy_create_key(ngx_http_request_t *r)
         return NGX_OK;
     }
 
-    loc_len = (r->valid_location && ctx->vars.uri.len)
-              ? ngx_min(plcf->location.len, r->uri.len) : 0;
+    loc_len = (r->valid_location && ctx->vars.uri.len) ? plcf->location.len : 0;
 
     if (r->quoted_uri || r->internal) {
         escape = 2 * ngx_escape_uri(NULL, r->uri.data + loc_len,
@@ -1369,8 +1368,8 @@ ngx_http_proxy_create_request(ngx_http_request_t *r)
         uri_len = r->unparsed_uri.len;
 
     } else {
-        loc_len = (r->valid_location && ctx->vars.uri.len)
-                  ? ngx_min(plcf->location.len, r->uri.len) : 0;
+        loc_len = (r->valid_location && ctx->vars.uri.len) ?
+                      plcf->location.len : 0;
 
         if (r->quoted_uri || r->internal) {
             escape = 2 * ngx_escape_uri(NULL, r->uri.data + loc_len,
@@ -3442,7 +3441,7 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
 
     conf->upstream.send_lowat = NGX_CONF_UNSET_SIZE;
     conf->upstream.buffer_size = NGX_CONF_UNSET_SIZE;
-    conf->upstream.limit_rate = NGX_CONF_UNSET_PTR;
+    conf->upstream.limit_rate = NGX_CONF_UNSET_SIZE;
 
     conf->upstream.busy_buffers_size_conf = NGX_CONF_UNSET_SIZE;
     conf->upstream.max_temp_file_size_conf = NGX_CONF_UNSET_SIZE;
@@ -3596,8 +3595,13 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->upstream.buffer_size,
                               (size_t) ngx_pagesize);
 
-    ngx_conf_merge_ptr_value(conf->upstream.limit_rate,
-                              prev->upstream.limit_rate, NULL);
+    ngx_conf_merge_size_value(conf->upstream.limit_rate,
+                              prev->upstream.limit_rate, 0);
+
+#if (T_NGX_SOCKET_BUFFER)
+    ngx_conf_merge_size_value(conf->sndbuf, prev->sndbuf, (size_t) 0);
+    ngx_conf_merge_size_value(conf->rcvbuf, prev->rcvbuf, (size_t) 0);
+#endif
 
 #if (T_NGX_SOCKET_BUFFER)
     ngx_conf_merge_size_value(conf->sndbuf, prev->sndbuf, (size_t) 0);
@@ -3714,7 +3718,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (ngx_conf_merge_path_value(cf, &conf->upstream.temp_path,
                               prev->upstream.temp_path,
                               &ngx_http_proxy_temp_path)
-        != NGX_CONF_OK)
+        != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }
@@ -3821,9 +3825,7 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_bitmask_value(conf->ssl_protocols, prev->ssl_protocols,
                                  (NGX_CONF_BITMASK_SET
-#ifndef SSL_OP_NO_TLSv1_2
                                   |NGX_SSL_TLSv1|NGX_SSL_TLSv1_1
-#endif
                                   |NGX_SSL_TLSv1_2|NGX_SSL_TLSv1_3));
 
     ngx_conf_merge_str_value(conf->ssl_ciphers, prev->ssl_ciphers,
@@ -4836,11 +4838,6 @@ ngx_http_proxy_store(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
     if (ngx_strcmp(value[1].data, "off") == 0) {
         plcf->upstream.store = 0;
         return NGX_CONF_OK;
-    }
-
-    if (value[1].len == 0) {
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0, "empty path");
-        return NGX_CONF_ERROR;
     }
 
 #if (NGX_HTTP_CACHE)

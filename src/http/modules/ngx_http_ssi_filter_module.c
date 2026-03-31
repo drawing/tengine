@@ -482,13 +482,9 @@ ngx_http_ssi_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
     while (ctx->in || ctx->buf) {
 
         if (ctx->buf == NULL) {
-
-            cl = ctx->in;
-            ctx->buf = cl->buf;
-            ctx->in = cl->next;
+            ctx->buf = ctx->in->buf;
+            ctx->in = ctx->in->next;
             ctx->pos = ctx->buf->pos;
-
-            ngx_free_chain(r->pool, cl);
         }
 
         if (ctx->state == ssi_start_state) {
@@ -2005,7 +2001,7 @@ ngx_http_ssi_regex_match(ngx_http_request_t *r, ngx_str_t *pattern,
 #else
 
     ngx_log_error(NGX_LOG_ALERT, r->connection->log, 0,
-                  "using regex \"%V\" in SSI requires PCRE library",
+                  "the using of the regex \"%V\" in SSI requires PCRE library",
                   pattern);
     return NGX_HTTP_SSI_ERROR;
 
@@ -2942,7 +2938,7 @@ ngx_http_ssi_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
     if (ngx_http_merge_types(cf, &conf->types_keys, &conf->types,
                              &prev->types_keys, &prev->types,
                              ngx_http_html_default_types)
-        != NGX_CONF_OK)
+        != NGX_OK)
     {
         return NGX_CONF_ERROR;
     }

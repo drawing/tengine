@@ -361,9 +361,7 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     ngx_conf_merge_bitmask_value(conf->protocols, prev->protocols,
                          (NGX_CONF_BITMASK_SET
-#ifndef SSL_OP_NO_TLSv1_2
                           |NGX_SSL_TLSv1|NGX_SSL_TLSv1_1
-#endif
                           |NGX_SSL_TLSv1_2|NGX_SSL_TLSv1_3));
 
     ngx_conf_merge_uint_value(conf->verify, prev->verify, 0);
@@ -471,13 +469,9 @@ ngx_mail_ssl_merge_conf(ngx_conf_t *cf, void *parent, void *child)
 
     if (conf->verify) {
 
-        if (conf->verify != 3
-            && conf->client_certificate.len == 0
-            && conf->trusted_certificate.len == 0)
-        {
+        if (conf->client_certificate.len == 0 && conf->verify != 3) {
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
-                          "no ssl_client_certificate or "
-                          "ssl_trusted_certificate for ssl_verify_client");
+                          "no ssl_client_certificate for ssl_verify_client");
             return NGX_CONF_ERROR;
         }
 

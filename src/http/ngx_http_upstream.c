@@ -126,10 +126,6 @@ static ngx_int_t ngx_http_upstream_process_set_cookie(ngx_http_request_t *r,
 static ngx_int_t
     ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
-#if (NGX_HTTP_CACHE)
-static ngx_int_t ngx_http_upstream_process_delta_seconds(u_char *p,
-    u_char *last);
-#endif
 static ngx_int_t ngx_http_upstream_ignore_header_line(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 static ngx_int_t ngx_http_upstream_process_expires(ngx_http_request_t *r,
@@ -2667,15 +2663,6 @@ ngx_http_upstream_process_header(ngx_http_request_t *r, ngx_http_upstream_t *u)
             return;
         }
 
-#if (NGX_HTTP_SSL)
-        if (u->ssl && c->ssl == NULL) {
-            ngx_log_error(NGX_LOG_ERR, c->log, 0,
-                          "upstream prematurely sent response");
-            ngx_http_upstream_next(r, u, NGX_HTTP_UPSTREAM_FT_ERROR);
-            return;
-        }
-#endif
-
         u->state->bytes_received += n;
 
         u->buffer.last += n;
@@ -3451,7 +3438,7 @@ ngx_http_upstream_send_response(ngx_http_request_t *r, ngx_http_upstream_t *u)
     p->downstream = c;
     p->pool = r->pool;
     p->log = c->log;
-    p->limit_rate = ngx_http_complex_value_size(r, u->conf->limit_rate, 0);
+    p->limit_rate = u->conf->limit_rate;
     p->start_sec = ngx_time();
 
     p->cacheable = u->cacheable || u->store;
@@ -4192,8 +4179,6 @@ ngx_http_upstream_thread_handler(ngx_thread_task_t *task, ngx_file_t *file)
     r->aio = 1;
     p->aio = 1;
 
-    ngx_add_timer(&task->event, 60000);
-
     return NGX_OK;
 }
 
@@ -4212,17 +4197,6 @@ ngx_http_upstream_thread_event_handler(ngx_event_t *ev)
     ngx_log_debug2(NGX_LOG_DEBUG_HTTP, c->log, 0,
                    "http upstream thread: \"%V?%V\"", &r->uri, &r->args);
 
-    if (ev->timedout) {
-        ngx_log_error(NGX_LOG_ALERT, c->log, 0,
-                      "thread operation took too long");
-        ev->timedout = 0;
-        return;
-    }
-
-    if (ev->timer_set) {
-        ngx_del_timer(ev);
-    }
-
     r->main->blocked--;
     r->aio = 0;
 
@@ -4240,11 +4214,11 @@ ngx_http_upstream_thread_event_handler(ngx_event_t *ev)
 
 #endif
 
-    if (r->done || r->main->terminated) {
+    if (r->done) {
         /*
          * trigger connection event handler if the subrequest was
-         * already finalized (this can happen if the handler is used
-         * for sendfile() in threads), or if the request was terminated
+         * already finalized; this can happen if the handler is used
+         * for sendfile() in threads
          */
 
         c->write->handler(c->write);
@@ -4558,10 +4532,6 @@ ngx_http_upstream_store(ngx_http_request_t *r, ngx_http_upstream_t *u)
                    "upstream stores \"%s\" to \"%s\"",
                    tf->file.name.data, path.data);
 
-    if (path.len == 0) {
-        return;
-    }
-
     (void) ngx_ext_rename_file(&tf->file.name, &path, &ext);
 
     u->store = 0;
@@ -4867,10 +4837,6 @@ ngx_http_upstream_finalize_request(ngx_http_request_t *r,
 
     u->peer.connection = NULL;
 
-    if (u->pipe) {
-        u->pipe->upstream = NULL;
-    }
-
     if (u->pipe && u->pipe->temp_file) {
         ngx_log_debug1(NGX_LOG_DEBUG_HTTP, r->connection->log, 0,
                        "http upstream temp fd: %d",
@@ -5155,9 +5121,18 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
     }
 
     if (p) {
-        n = ngx_http_upstream_process_delta_seconds(p + offset, last);
+        n = 0;
 
-        if (n == NGX_ERROR) {
+        for (p += offset; p < last; p++) {
+            if (*p == ',' || *p == ';' || *p == ' ') {
+                break;
+            }
+
+            if (*p >= '0' && *p <= '9') {
+                n = n * 10 + (*p - '0');
+                continue;
+            }
+
             u->cacheable = 0;
             return NGX_OK;
         }
@@ -5167,8 +5142,7 @@ ngx_http_upstream_process_cache_control(ngx_http_request_t *r,
             return NGX_OK;
         }
 
-        r->cache->valid_sec = ngx_min((ngx_uint_t) ngx_time() + n,
-                                      NGX_MAX_INT_T_VALUE);
+        r->cache->valid_sec = ngx_time() + n;
         u->headers_in.expired = 0;
     }
 
@@ -5178,9 +5152,18 @@ extensions:
                          23 - 1);
 
     if (p) {
-        n = ngx_http_upstream_process_delta_seconds(p + 23, last);
+        n = 0;
 
-        if (n == NGX_ERROR) {
+        for (p += 23; p < last; p++) {
+            if (*p == ',' || *p == ';' || *p == ' ') {
+                break;
+            }
+
+            if (*p >= '0' && *p <= '9') {
+                n = n * 10 + (*p - '0');
+                continue;
+            }
+
             u->cacheable = 0;
             return NGX_OK;
         }
@@ -5192,9 +5175,18 @@ extensions:
     p = ngx_strlcasestrn(start, last, (u_char *) "stale-if-error=", 15 - 1);
 
     if (p) {
-        n = ngx_http_upstream_process_delta_seconds(p + 15, last);
+        n = 0;
 
-        if (n == NGX_ERROR) {
+        for (p += 15; p < last; p++) {
+            if (*p == ',' || *p == ';' || *p == ' ') {
+                break;
+            }
+
+            if (*p >= '0' && *p <= '9') {
+                n = n * 10 + (*p - '0');
+                continue;
+            }
+
             u->cacheable = 0;
             return NGX_OK;
         }
@@ -5206,41 +5198,6 @@ extensions:
 
     return NGX_OK;
 }
-
-
-#if (NGX_HTTP_CACHE)
-
-static ngx_int_t
-ngx_http_upstream_process_delta_seconds(u_char *p, u_char *last)
-{
-    ngx_int_t  n, cutoff, cutlim;
-
-    cutoff = NGX_MAX_INT_T_VALUE / 10;
-    cutlim = NGX_MAX_INT_T_VALUE % 10;
-
-    n = 0;
-
-    for ( /* void */ ; p < last; p++) {
-        if (*p == ',' || *p == ';' || *p == ' ') {
-            break;
-        }
-
-        if (*p < '0' || *p > '9') {
-            return NGX_ERROR;
-        }
-
-        if (n >= cutoff && (n > cutoff || *p - '0' > cutlim)) {
-            n = NGX_MAX_INT_T_VALUE;
-            break;
-        }
-
-        n = n * 10 + (*p - '0');
-    }
-
-    return n;
-}
-
-#endif
 
 
 static ngx_int_t

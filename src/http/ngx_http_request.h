@@ -332,8 +332,6 @@ typedef struct {
 
     ngx_chain_t                      *free;
 
-    ngx_msec_t                        keepalive_timeout;
-
     unsigned                          ssl:1;
     unsigned                          proxy_protocol:1;
 } ngx_http_connection_t;
@@ -495,10 +493,6 @@ struct ngx_http_request_s {
 
     unsigned                          http_state:4;
 
-#if (T_NGX_XQUIC)
-    ngx_http_v3_stream_t             *xqstream;
-#endif
-
     /* URI with "/." and on Win32 with "//" */
     unsigned                          complex_uri:1;
 
@@ -581,12 +575,10 @@ struct ngx_http_request_s {
     unsigned                          request_complete:1;
     unsigned                          request_output:1;
     unsigned                          header_sent:1;
-    unsigned                          response_sent:1;
     unsigned                          expect_tested:1;
     unsigned                          root_tested:1;
     unsigned                          done:1;
     unsigned                          logged:1;
-    unsigned                          terminated:1;
 
     unsigned                          buffered:4;
 
@@ -634,6 +626,8 @@ struct ngx_http_request_s {
     u_char                           *schema_end;
     u_char                           *host_start;
     u_char                           *host_end;
+    u_char                           *port_start;
+    u_char                           *port_end;
 
     unsigned                          http_minor:16;
     unsigned                          http_major:16;

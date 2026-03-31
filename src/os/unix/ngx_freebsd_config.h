@@ -103,7 +103,7 @@ typedef struct aiocb  ngx_aiocb_t;
 #define NGX_LISTEN_BACKLOG        -1
 
 
-#if (defined __DragonFly__ && __DragonFly_version < 500702)
+#ifdef __DragonFly__
 #define NGX_KEEPALIVE_FACTOR      1000
 #endif
 

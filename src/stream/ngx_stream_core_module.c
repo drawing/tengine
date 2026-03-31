@@ -10,11 +10,6 @@
 #include <ngx_stream.h>
 
 
-static ngx_uint_t ngx_stream_preread_can_peek(ngx_connection_t *c);
-static ngx_int_t ngx_stream_preread_peek(ngx_stream_session_t *s,
-    ngx_stream_phase_handler_t *ph);
-static ngx_int_t ngx_stream_preread(ngx_stream_session_t *s,
-    ngx_stream_phase_handler_t *ph);
 static ngx_int_t ngx_stream_core_preconfiguration(ngx_conf_t *cf);
 static void *ngx_stream_core_create_main_conf(ngx_conf_t *cf);
 static char *ngx_stream_core_init_main_conf(ngx_conf_t *cf, void *conf);
@@ -235,6 +230,8 @@ ngx_int_t
 ngx_stream_core_preread_phase(ngx_stream_session_t *s,
     ngx_stream_phase_handler_t *ph)
 {
+    size_t                       size;
+    ssize_t                      n;
     ngx_int_t                    rc;
     ngx_connection_t            *c;
     ngx_stream_core_srv_conf_t  *cscf;
@@ -247,33 +244,56 @@ ngx_stream_core_preread_phase(ngx_stream_session_t *s,
 
     if (c->read->timedout) {
         rc = NGX_STREAM_OK;
-        goto done;
-    }
 
-    if (!c->read->timer_set) {
-        rc = ph->handler(s);
-
-        if (rc != NGX_AGAIN) {
-            goto done;
-        }
-    }
-
-    if (c->buffer == NULL) {
-        c->buffer = ngx_create_temp_buf(c->pool, cscf->preread_buffer_size);
-        if (c->buffer == NULL) {
-            rc = NGX_ERROR;
-            goto done;
-        }
-    }
-
-    if (ngx_stream_preread_can_peek(c)) {
-        rc = ngx_stream_preread_peek(s, ph);
+    } else if (c->read->timer_set) {
+        rc = NGX_AGAIN;
 
     } else {
-        rc = ngx_stream_preread(s, ph);
+        rc = ph->handler(s);
     }
 
-done:
+    while (rc == NGX_AGAIN) {
+
+        if (c->buffer == NULL) {
+            c->buffer = ngx_create_temp_buf(c->pool, cscf->preread_buffer_size);
+            if (c->buffer == NULL) {
+                rc = NGX_ERROR;
+                break;
+            }
+        }
+
+        size = c->buffer->end - c->buffer->last;
+
+        if (size == 0) {
+            ngx_log_error(NGX_LOG_ERR, c->log, 0, "preread buffer full");
+            rc = NGX_STREAM_BAD_REQUEST;
+            break;
+        }
+
+        if (c->read->eof) {
+            rc = NGX_STREAM_OK;
+            break;
+        }
+
+        if (!c->read->ready) {
+            break;
+        }
+
+        n = c->recv(c, c->buffer->last, size);
+
+        if (n == NGX_ERROR || n == 0) {
+            rc = NGX_STREAM_OK;
+            break;
+        }
+
+        if (n == NGX_AGAIN) {
+            break;
+        }
+
+        c->buffer->last += n;
+
+        rc = ph->handler(s);
+    }
 
     if (rc == NGX_AGAIN) {
         if (ngx_handle_read_event(c->read, 0) != NGX_OK) {
@@ -318,129 +338,6 @@ done:
 }
 
 
-static ngx_uint_t
-ngx_stream_preread_can_peek(ngx_connection_t *c)
-{
-#if (NGX_STREAM_SSL)
-    if (c->ssl) {
-        return 0;
-    }
-#endif
-
-    if ((ngx_event_flags & NGX_USE_CLEAR_EVENT) == 0) {
-        return 0;
-    }
-
-#if (NGX_HAVE_KQUEUE)
-    if (ngx_event_flags & NGX_USE_KQUEUE_EVENT) {
-        return 1;
-    }
-#endif
-
-#if (NGX_HAVE_EPOLLRDHUP)
-    if ((ngx_event_flags & NGX_USE_EPOLL_EVENT) && ngx_use_epoll_rdhup) {
-        return 1;
-    }
-#endif
-
-    return 0;
-}
-
-
-static ngx_int_t
-ngx_stream_preread_peek(ngx_stream_session_t *s, ngx_stream_phase_handler_t *ph)
-{
-    ssize_t            n;
-    ngx_int_t          rc;
-    ngx_err_t          err;
-    ngx_connection_t  *c;
-
-    c = s->connection;
-
-    n = recv(c->fd, (char *) c->buffer->last,
-             c->buffer->end - c->buffer->last, MSG_PEEK);
-
-    err = ngx_socket_errno;
-
-    ngx_log_debug1(NGX_LOG_DEBUG_STREAM, c->log, 0, "stream recv(): %z", n);
-
-    if (n == -1) {
-        if (err == NGX_EAGAIN) {
-            c->read->ready = 0;
-            return NGX_AGAIN;
-        }
-
-        ngx_connection_error(c, err, "recv() failed");
-        return NGX_STREAM_OK;
-    }
-
-    if (n == 0) {
-        return NGX_STREAM_OK;
-    }
-
-    c->buffer->last += n;
-
-    rc = ph->handler(s);
-
-    if (rc != NGX_AGAIN) {
-        c->buffer->last = c->buffer->pos;
-        return rc;
-    }
-
-    if (c->buffer->last == c->buffer->end) {
-        ngx_log_error(NGX_LOG_ERR, c->log, 0, "preread buffer full");
-        return NGX_STREAM_BAD_REQUEST;
-    }
-
-    if (c->read->pending_eof) {
-        return NGX_STREAM_OK;
-    }
-
-    c->buffer->last = c->buffer->pos;
-
-    return NGX_AGAIN;
-}
-
-
-static ngx_int_t
-ngx_stream_preread(ngx_stream_session_t *s, ngx_stream_phase_handler_t *ph)
-{
-    ssize_t            n;
-    ngx_int_t          rc;
-    ngx_connection_t  *c;
-
-    c = s->connection;
-
-    while (c->read->ready) {
-
-        n = c->recv(c, c->buffer->last, c->buffer->end - c->buffer->last);
-
-        if (n == NGX_AGAIN) {
-            return NGX_AGAIN;
-        }
-
-        if (n == NGX_ERROR || n == 0) {
-            return NGX_STREAM_OK;
-        }
-
-        c->buffer->last += n;
-
-        rc = ph->handler(s);
-
-        if (rc != NGX_AGAIN) {
-            return rc;
-        }
-
-        if (c->buffer->last == c->buffer->end) {
-            ngx_log_error(NGX_LOG_ERR, c->log, 0, "preread buffer full");
-            return NGX_STREAM_BAD_REQUEST;
-        }
-    }
-
-    return NGX_AGAIN;
-}
-
-
 ngx_int_t
 ngx_stream_core_content_phase(ngx_stream_session_t *s,
     ngx_stream_phase_handler_t *ph)
@@ -458,13 +355,6 @@ ngx_stream_core_content_phase(ngx_stream_session_t *s,
         && cscf->tcp_nodelay
         && ngx_tcp_nodelay(c) != NGX_OK)
     {
-        ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
-        return NGX_OK;
-    }
-
-    if (cscf->handler == NULL) {
-        ngx_log_debug0(NGX_LOG_DEBUG_STREAM, c->log, 0,
-                       "no handler for server");
         ngx_stream_finalize_session(s, NGX_STREAM_INTERNAL_SERVER_ERROR);
         return NGX_OK;
     }
@@ -610,6 +500,13 @@ ngx_stream_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
         }
 
         conf->resolver = prev->resolver;
+    }
+
+    if (conf->handler == NULL) {
+        ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
+                      "no handler for server in %s:%ui",
+                      conf->file_name, conf->line);
+        return NGX_CONF_ERROR;
     }
 
     if (conf->error_log == NULL) {
@@ -907,7 +804,7 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
 #else
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "ipv6only is not supported "
+                               "bind ipv6only is not supported "
                                "on this platform");
             return NGX_CONF_ERROR;
 #endif
@@ -1043,7 +940,7 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid parameter \"%V\"", &value[i]);
+                           "the invalid \"%V\" parameter", &value[i]);
         return NGX_CONF_ERROR;
     }
 
@@ -1205,42 +1102,6 @@ ngx_stream_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             ngx_strlow(sn->name.data, sn->name.data, sn->name.len);
             continue;
         }
-
-#if (NGX_PCRE)
-        {
-        u_char               *p;
-        ngx_regex_compile_t   rc;
-        u_char                errstr[NGX_MAX_CONF_ERRSTR];
-
-        if (value[i].len == 1) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "empty regex in server name \"%V\"", &value[i]);
-            return NGX_CONF_ERROR;
-        }
-
-        ngx_memzero(&rc, sizeof(ngx_regex_compile_t));
-        rc.pattern = value[i];
-        rc.err.len = NGX_MAX_CONF_ERRSTR;
-        rc.err.data = errstr;
-
-        for (p = value[i].data; p < value[i].data + value[i].len; p++) {
-            if (*p >= 'A' && *p <= 'Z') {
-                rc.options = NGX_REGEX_CASELESS;
-                break;
-            }
-        }
-
-        /* Use stream regex compile to register named captures as variables */
-        if (ngx_stream_regex_compile(cf, &rc) == NULL) {
-            return NGX_CONF_ERROR;
-        }
-        }
-#else
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "using regex \"%V\" "
-                           "requires PCRE library", &value[i]);
-        return NGX_CONF_ERROR;
-#endif
 
     }
 

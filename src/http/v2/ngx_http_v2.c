@@ -323,11 +323,6 @@ ngx_http_v2_init(ngx_event_t *rev)
 
     c->data = h2c;
 
-    if (ngx_exiting) {
-        ngx_http_v2_finalize_connection(h2c, NGX_HTTP_V2_NO_ERROR);
-        return;
-    }
-
     rev->handler = ngx_http_v2_read_handler;
     c->write->handler = ngx_http_v2_write_handler;
 
@@ -405,11 +400,13 @@ ngx_http_v2_read_handler(ngx_event_t *rev)
     h2mcf = ngx_http_get_module_main_conf(h2c->http_connection->conf_ctx,
                                           ngx_http_v2_module);
 
-    available = h2mcf->recv_buffer_size - NGX_HTTP_V2_STATE_BUFFER_SIZE;
+    available = h2mcf->recv_buffer_size - 2 * NGX_HTTP_V2_STATE_BUFFER_SIZE;
 
     do {
         p = h2mcf->recv_buffer;
-        end = ngx_cpymem(p, h2c->state.buffer, h2c->state.buffer_used);
+
+        ngx_memcpy(p, h2c->state.buffer, NGX_HTTP_V2_STATE_BUFFER_SIZE);
+        end = p + h2c->state.buffer_used;
 
         n = c->recv(c, end, available);
 
@@ -2646,7 +2643,7 @@ ngx_http_v2_state_save(ngx_http_v2_connection_t *h2c, u_char *pos, u_char *end,
         return ngx_http_v2_connection_error(h2c, NGX_HTTP_V2_INTERNAL_ERROR);
     }
 
-    ngx_memcpy(h2c->state.buffer, pos, size);
+    ngx_memcpy(h2c->state.buffer, pos, NGX_HTTP_V2_STATE_BUFFER_SIZE);
 
     h2c->state.buffer_used = size;
     h2c->state.handler = handler;
@@ -4230,14 +4227,15 @@ ngx_http_v2_process_request_body(ngx_http_request_t *r, u_char *pos,
                 n = size;
             }
 
+            if (n > 0) {
+                rb->buf->last = ngx_cpymem(rb->buf->last, pos, n);
+            }
+
             ngx_log_debug1(NGX_LOG_DEBUG_HTTP, fc->log, 0,
                            "http2 request body recv %uz", n);
 
-            if (n > 0) {
-                rb->buf->last = ngx_cpymem(rb->buf->last, pos, n);
-                pos += n;
-                size -= n;
-            }
+            pos += n;
+            size -= n;
 
             if (size == 0 && last) {
                 rb->rest = 0;

@@ -129,8 +129,28 @@ if test -z "$NGX_KQUEUE_CHECKED"; then
 fi
 
 
+if [ "$NGX_SYSTEM" = "NetBSD" ]; then
+
+    # NetBSD 2.0 incompatibly defines kevent.udata as "intptr_t"
+
+    cat << END >> $NGX_AUTO_CONFIG_H
+
+#define NGX_KQUEUE_UDATA_T
+
+END
+
+else
+    cat << END >> $NGX_AUTO_CONFIG_H
+
+#define NGX_KQUEUE_UDATA_T  (void *)
+
+END
+
+fi
+
+
 ngx_feature="crypt()"
-ngx_feature_name="NGX_HAVE_CRYPT"
+ngx_feature_name=
 ngx_feature_run=no
 ngx_feature_incs=
 ngx_feature_path=
@@ -142,7 +162,7 @@ ngx_feature_test="crypt(\"test\", \"salt\");"
 if [ $ngx_found = no ]; then
 
     ngx_feature="crypt() in libcrypt"
-    ngx_feature_name="NGX_HAVE_CRYPT"
+    ngx_feature_name=
     ngx_feature_run=no
     ngx_feature_incs=
     ngx_feature_path=
@@ -425,54 +445,6 @@ ngx_feature_incs="#include <sys/socket.h>
 ngx_feature_path=
 ngx_feature_libs=
 ngx_feature_test="setsockopt(0, IPPROTO_IPV6, IPV6_RECVPKTINFO, NULL, 0)"
-. auto/feature
-
-
-# IP packet fragmentation
-
-ngx_feature="IP_MTU_DISCOVER"
-ngx_feature_name="NGX_HAVE_IP_MTU_DISCOVER"
-ngx_feature_run=no
-ngx_feature_incs="#include <sys/socket.h>
-                  #include <netinet/in.h>"
-ngx_feature_path=
-ngx_feature_libs=
-ngx_feature_test="(void) IP_PMTUDISC_DO;
-                  setsockopt(0, IPPROTO_IP, IP_MTU_DISCOVER, NULL, 0)"
-. auto/feature
-
-
-ngx_feature="IPV6_MTU_DISCOVER"
-ngx_feature_name="NGX_HAVE_IPV6_MTU_DISCOVER"
-ngx_feature_run=no
-ngx_feature_incs="#include <sys/socket.h>
-                  #include <netinet/in.h>"
-ngx_feature_path=
-ngx_feature_libs=
-ngx_feature_test="(void) IPV6_PMTUDISC_DO;
-                  setsockopt(0, IPPROTO_IPV6, IPV6_MTU_DISCOVER, NULL, 0)"
-. auto/feature
-
-
-ngx_feature="IP_DONTFRAG"
-ngx_feature_name="NGX_HAVE_IP_DONTFRAG"
-ngx_feature_run=no
-ngx_feature_incs="#include <sys/socket.h>
-                  #include <netinet/in.h>"
-ngx_feature_path=
-ngx_feature_libs=
-ngx_feature_test="setsockopt(0, IPPROTO_IP, IP_DONTFRAG, NULL, 0)"
-. auto/feature
-
-
-ngx_feature="IPV6_DONTFRAG"
-ngx_feature_name="NGX_HAVE_IPV6_DONTFRAG"
-ngx_feature_run=no
-ngx_feature_incs="#include <sys/socket.h>
-                  #include <netinet/in.h>"
-ngx_feature_path=
-ngx_feature_libs=
-ngx_feature_test="setsockopt(0, IPPROTO_IP, IPV6_DONTFRAG, NULL, 0)"
 . auto/feature
 
 

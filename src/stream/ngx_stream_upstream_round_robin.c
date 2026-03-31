@@ -793,10 +793,10 @@ ngx_stream_upstream_save_round_robin_peer_session(ngx_peer_connection_t *pc,
             return;
         }
 
-        len = i2d_SSL_SESSION(ssl_session, NULL);
+        ngx_log_debug1(NGX_LOG_DEBUG_STREAM, pc->log, 0,
+                       "save session: %p", ssl_session);
 
-        ngx_log_debug2(NGX_LOG_DEBUG_STREAM, pc->log, 0,
-                       "save session: %p:%d", ssl_session, len);
+        len = i2d_SSL_SESSION(ssl_session, NULL);
 
         /* do not cache too big session */
 
@@ -861,6 +861,8 @@ ngx_stream_upstream_save_round_robin_peer_session(ngx_peer_connection_t *pc,
 
         ngx_log_debug1(NGX_LOG_DEBUG_STREAM, pc->log, 0,
                        "old session: %p", old_ssl_session);
+
+        /* TODO: may block */
 
         ngx_ssl_free_session(old_ssl_session);
     }
