@@ -39,10 +39,8 @@ http {
     limit_conn_zone  $binary_remote_addr  zone=conn:1m;
 
     server {
-        listen       127.0.0.1:8080;
+        listen       127.0.0.1:8080 http2;
         server_name  localhost;
-
-        http2 on;
 
         location /t.html {
             limit_conn conn 1;
@@ -53,7 +51,10 @@ http {
 EOF
 
 $t->write_file('t.html', 'SEE-THIS');
+# suppress deprecation warning
+open OLDERR, ">&", \*STDERR; close STDERR;
 $t->run();
+open STDERR, ">&", \*OLDERR;
 
 ###############################################################################
 

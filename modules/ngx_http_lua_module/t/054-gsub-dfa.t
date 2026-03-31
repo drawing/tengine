@@ -107,11 +107,8 @@ hello, world: 0
     }
 --- request
     GET /re
---- response_body eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-"error: pcre2_compile() failed: missing closing parenthesis in \"(abc\"\n"
-:
-"error: pcre_compile() failed: missing ) in \"(abc\"\n"
+--- response_body
+error: pcre_compile() failed: missing ) in "(abc"
 
 
 
@@ -129,11 +126,8 @@ $Test::Nginx::Util::PcreVersion == 2 ?
     }
 --- request
     GET /re
---- response_body eval
-$Test::Nginx::Util::PcreVersion == 2 ?
-"error: pcre2_compile() failed: missing closing parenthesis in \"(abc\"\n"
-:
-"error: pcre_compile() failed: missing ) in \"(abc\"\n"
+--- response_body
+error: pcre_compile() failed: missing ) in "(abc"
 --- no_error_log
 [error]
 
