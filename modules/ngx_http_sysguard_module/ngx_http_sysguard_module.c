@@ -6,7 +6,6 @@
 #include <ngx_config.h>
 #include <ngx_core.h>
 #include <ngx_http.h>
-#include <ngx_sysinfo.h>
 
 
 #define NGX_HTTP_SYSGUARD_MODE_OR  0

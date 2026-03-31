@@ -987,7 +987,6 @@ hello in thread
 after
 --- no_error_log
 [error]
---- skip_eval: 4:$ENV{TEST_NGINX_USE_HTTP3}
 
 
 
@@ -1073,7 +1072,6 @@ hello in thread
 after
 --- no_error_log
 [error]
---- skip_eval: 4:$ENV{TEST_NGINX_USE_HTTP3}
 
 
 
