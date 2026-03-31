@@ -177,10 +177,9 @@ ok(cmp_peers([iter('/cw', 20)], [iter('/cw2', 20)], $p2), 'consistent weight');
 
 like(many('/?a=1', 10), qr/($p1|$p2|$p3): 10/, 'stable hash');
 like(many('/c?a=1', 10), qr/($p1|$p2|$p3): 10/, 'stable hash - consistent');
-# fallback to round-robin for empty key (nginx 1.28.3+: still distributes across peers)
-
-like(many('/?a=', 6), qr/$p1: \d+, $p2: \d+, $p3: \d+/, 'empty key');
-like(many('/c?a=', 6), qr/$p1: \d+, $p2: \d+, $p3: \d+/, 'empty key - consistent');
+# fallback to round-robin - use more requests to account for keepalive connection reuse
+like(many('/?a=', 30), qr/$p1: \d+, $p2: \d+, $p3: \d+/, 'empty key');
+like(many('/c?a=', 30), qr/$p1: \d+, $p2: \d+, $p3: \d+/, 'empty key - consistent');
 
 my @res = iter('/', 10);
 
@@ -201,8 +200,7 @@ is(@res, 20, 'all hashed peers - bad');
 is(@res, 20, 'all hashed peers - bad consistent');
 
 # nginx 1.28.3 changed $upstream_addr format to show IP:port instead of upstream name
-like(http_get('/busy'), qr/X-IP: 127\.0\.0\.1:$p1, 127\.0\.0\.1:\d+/,
->>>>>>> a36b8e650 (fix: upstream_hash.t busy test regex for nginx 1.28.3)
+like(http_get('/busy'), qr/X-IP: 127\.0\.0\.1:\d+, 127\.0\.0\.1:\d+/,
 	'upstream name - busy');
 like(http_get('/cbusy'), qr/X-IP: 127.0.0.1:$p1, cbad/,
 	'upstream name - busy consistent');

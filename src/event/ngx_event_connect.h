@@ -40,6 +40,38 @@ struct ngx_peer_connection_s {
     socklen_t                        socklen;
     ngx_str_t                       *name;
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)    
+    ngx_str_t                       *host;
+#endif
+
+    ngx_uint_t                       tries;
+    ngx_msec_t                       start_time;
+
+    ngx_event_get_peer_pt            get;
+    ngx_event_free_peer_pt           free;
+    ngx_event_notify_peer_pt         notify;
+    void                            *data;
+
+#if (NGX_SSL || NGX_COMPAT)
+    ngx_event_set_peer_session_pt    set_session;
+    ngx_event_save_peer_session_pt   save_session;
+#endif
+
+    ngx_addr_t                      *local;
+
+    int                              type;
+    int                              rcvbuf;
+#if (T_NGX_SOCKET_BUFFER)
+    int                              sndbuf;
+#endif
+
+    ngx_log_t                       *log;
+
+    unsigned                         cached:1;
+    unsigned                         transparent:1;
+    unsigned                         so_keepalive:1;
+    unsigned                         down:1;
+
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)    
     unsigned                         resolved:2;
 #endif
 

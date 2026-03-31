@@ -89,9 +89,6 @@ struct ngx_http_upstream_rr_peers_s {
 
     ngx_str_t                      *name;
 
-#if (NGX_DYUPS)
-    ngx_uint_t                      init_number;
-#endif
     ngx_http_upstream_rr_peers_t   *next;
 
     ngx_http_upstream_rr_peer_t    *peer;

@@ -132,7 +132,9 @@ typedef struct {
 #define NGX_HTTP_UPSTREAM_DOWN          0x0010
 #define NGX_HTTP_UPSTREAM_BACKUP        0x0020
 #define NGX_HTTP_UPSTREAM_MAX_CONNS     0x0100
-#define NGX_HTTP_UPSTREAM_ID            0x0200
+#define NGX_HTTP_UPSTREAM_ID            0x0040
+#if (T_NGX_HTTP_UPSTREAM_RANDOM)
+#define T_NGX_HTTP_UPSTREAM_RANDOM_FLAG 0x0200
 #endif
 
 
@@ -145,6 +147,12 @@ struct ngx_http_upstream_srv_conf_s {
 
     ngx_array_t                     *servers;  /* ngx_http_upstream_server_t */
 
+#if (NGX_HTTP_UPSTREAM_HASH)
+    ngx_array_t                     *values;
+    ngx_array_t                     *lengths;
+    ngx_uint_t                       retries;
+#endif
+
     ngx_uint_t                       flags;
     ngx_str_t                        host;
     u_char                          *file_name;
@@ -154,8 +162,6 @@ struct ngx_http_upstream_srv_conf_s {
 
 #if (NGX_HTTP_UPSTREAM_ZONE)
     ngx_shm_zone_t                  *shm_zone;
-    ngx_resolver_t                  *resolver;
-    ngx_msec_t                       resolver_timeout;
 #endif
 };
 
@@ -179,7 +185,7 @@ typedef struct {
 
     size_t                           send_lowat;
     size_t                           buffer_size;
-    ngx_http_complex_value_t        *limit_rate;
+    size_t                           limit_rate;
 
     size_t                           busy_buffers_size;
     size_t                           max_temp_file_size;
@@ -199,7 +205,6 @@ typedef struct {
     ngx_flag_t                       request_buffering;
     ngx_flag_t                       pass_request_headers;
     ngx_flag_t                       pass_request_body;
-    ngx_flag_t                       pass_trailers;
 
     ngx_flag_t                       ignore_client_abort;
     ngx_flag_t                       intercept_errors;
@@ -248,6 +253,7 @@ typedef struct {
     signed                           store:2;
     unsigned                         intercept_404:1;
     unsigned                         change_buffering:1;
+    unsigned                         pass_trailers:1;
     unsigned                         preserve_output:1;
 
 #if (NGX_HTTP_SSL || NGX_COMPAT)
@@ -260,8 +266,20 @@ typedef struct {
 
     ngx_http_complex_value_t        *ssl_certificate;
     ngx_http_complex_value_t        *ssl_certificate_key;
-    ngx_ssl_cache_t                 *ssl_certificate_cache;
     ngx_array_t                     *ssl_passwords;
+
+#if (T_NGX_SSL_NTLS)
+    ngx_str_t                        enc_certificate;
+    ngx_str_t                        enc_certificate_key;
+    ngx_str_t                        sign_certificate;
+    ngx_str_t                        sign_certificate_key;
+#endif
+#endif
+
+#if (T_NGX_SSL_NTLS)
+    ngx_str_t                        ssl_ciphers;
+    const SSL_METHOD                *tls_method;
+    ngx_http_complex_value_t        *enable_ntls;
 #endif
 
     ngx_str_t                        module;
@@ -364,6 +382,9 @@ struct ngx_http_upstream_s {
     ngx_http_upstream_headers_in_t   headers_in;
 
     ngx_http_upstream_resolved_t    *resolved;
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
+    ngx_resolver_ctx_t              *dyn_resolve_ctx;
+#endif
 
     ngx_buf_t                        from_client;
 
@@ -423,26 +444,6 @@ struct ngx_http_upstream_s {
     unsigned                         request_body_sent:1;
     unsigned                         request_body_blocked:1;
     unsigned                         header_sent:1;
-    unsigned                         response_received:1;
-
-#if (T_NGX_MULTI_UPSTREAM)
-    unsigned                         multi:1;
-    void                            *multi_init;
-    ngx_flag_t                       multi_mode;
-#endif
-
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    ngx_resolver_ctx_t              *dyn_resolve_ctx;
-#endif
-};
-
-
-typedef struct {
-    ngx_uint_t                      status;
-    ngx_uint_t                      mask;
-} ngx_http_upstream_next_t;
-
-
 
 #if (T_NGX_MULTI_UPSTREAM)
     unsigned                         multi:1;
