@@ -441,7 +441,7 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
 #else
             ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "ipv6only is not supported "
+                               "bind ipv6only is not supported "
                                "on this platform");
             return NGX_CONF_ERROR;
 #endif
@@ -564,7 +564,7 @@ ngx_mail_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         }
 
         ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "invalid parameter \"%V\"", &value[i]);
+                           "the invalid \"%V\" parameter", &value[i]);
         return NGX_CONF_ERROR;
     }
 
