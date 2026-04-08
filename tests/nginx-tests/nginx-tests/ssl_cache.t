@@ -11,6 +11,8 @@ use strict;
 
 use Test::More;
 
+use POSIX qw/ mkfifo /;
+
 BEGIN { use FindBin; chdir($FindBin::Bin); }
 
 use lib 'lib';
@@ -44,22 +46,22 @@ http {
         listen       127.0.0.1:8443 ssl;
         server_name  1.example.com;
 
-        ssl_certificate 1.example.com.crt;
-        ssl_certificate_key 1.example.com.key;
+        ssl_certificate 1.example.com.crt.fifo;
+        ssl_certificate_key 1.example.com.key.fifo;
 
-        ssl_trusted_certificate root.crt;
-        ssl_crl root.crl;
+        ssl_trusted_certificate root.crt.fifo;
+        ssl_crl root.crl.fifo;
     }
 
     server {
         listen       127.0.0.1:8444 ssl;
         server_name  1.example.com;
 
-        ssl_certificate %%TESTDIR%%/1.example.com.crt;
-        ssl_certificate_key %%TESTDIR%%/1.example.com.key;
+        ssl_certificate %%TESTDIR%%/1.example.com.crt.fifo;
+        ssl_certificate_key %%TESTDIR%%/1.example.com.key.fifo;
 
-        ssl_trusted_certificate %%TESTDIR%%/root.crt;
-        ssl_crl %%TESTDIR%%/root.crl;
+        ssl_trusted_certificate %%TESTDIR%%/root.crt.fifo;
+        ssl_crl %%TESTDIR%%/root.crl.fifo;
     }
 
     server {
@@ -68,12 +70,12 @@ http {
 
         add_header X-Verify $ssl_client_verify:$ssl_client_s_dn;
 
-        ssl_certificate 2.example.com.crt;
-        ssl_certificate_key 2.example.com.key;
+        ssl_certificate 2.example.com.crt.fifo;
+        ssl_certificate_key 2.example.com.key.fifo;
 
         ssl_verify_client on;
-        ssl_client_certificate root.crt;
-        ssl_crl root.crl;
+        ssl_client_certificate root.crt.fifo;
+        ssl_crl root.crl.fifo;
     }
 
     server {
@@ -83,13 +85,13 @@ http {
         location / {
             proxy_pass https://127.0.0.1:8445;
 
-            proxy_ssl_certificate 1.example.com.crt;
-            proxy_ssl_certificate_key 1.example.com.key;
+            proxy_ssl_certificate 1.example.com.crt.fifo;
+            proxy_ssl_certificate_key 1.example.com.key.fifo;
 
             proxy_ssl_name 2.example.com;
             proxy_ssl_verify on;
-            proxy_ssl_trusted_certificate root.crt;
-            proxy_ssl_crl root.crl;
+            proxy_ssl_trusted_certificate root.crt.fifo;
+            proxy_ssl_crl root.crl.fifo;
         }
     }
 }
@@ -156,7 +158,18 @@ system("openssl ca -gencrl -config $d/ca.conf "
 	. ">>$d/openssl.out 2>&1") == 0
 	or die "Can't update crl: $!\n";
 
+foreach my $name ('root.crt', 'root.crl', '1.example.com.crt',
+	'1.example.com.key', '2.example.com.crt', '2.example.com.key')
+{
+	mkfifo("$d/$name.fifo", 0700);
+	$t->run_daemon(\&fifo_writer_daemon, $t, $name);
+}
+
 $t->write_file('t', '');
+
+# nginx 1.28.3+: wait for FIFO daemons to write initial certificate content
+# before nginx parses config and validates certificates at startup
+select undef, undef, undef, 1.0;
 
 $t->plan(4)->run();
 
@@ -191,6 +204,20 @@ sub get {
 		SSL_key_file => "$d/$cert.key"
 		) : ()
 	);
+}
+
+###############################################################################
+
+sub fifo_writer_daemon {
+	my ($t, $name) = @_;
+
+	my $content = $t->read_file($name);
+
+	while (1) {
+		$t->write_file("$name.fifo", $content);
+		# reset content after the first read
+		$content = "";
+	}
 }
 
 ###############################################################################
