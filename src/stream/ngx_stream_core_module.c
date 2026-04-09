@@ -1103,42 +1103,6 @@ ngx_stream_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
             continue;
         }
 
-#if (NGX_PCRE)
-        {
-        u_char               *p;
-        ngx_regex_compile_t   rc;
-        u_char                errstr[NGX_MAX_CONF_ERRSTR];
-
-        if (value[i].len == 1) {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "empty regex in server name \"%V\"", &value[i]);
-            return NGX_CONF_ERROR;
-        }
-
-        ngx_memzero(&rc, sizeof(ngx_regex_compile_t));
-        rc.pattern = value[i];
-        rc.err.len = NGX_MAX_CONF_ERRSTR;
-        rc.err.data = errstr;
-
-        for (p = value[i].data; p < value[i].data + value[i].len; p++) {
-            if (*p >= 'A' && *p <= 'Z') {
-                rc.options = NGX_REGEX_CASELESS;
-                break;
-            }
-        }
-
-        /* Use stream regex compile to register named captures as variables */
-        if (ngx_stream_regex_compile(cf, &rc) == NULL) {
-            return NGX_CONF_ERROR;
-        }
-        }
-#else
-        ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                           "using regex \"%V\" "
-                           "requires PCRE library", &value[i]);
-        return NGX_CONF_ERROR;
-#endif
-
     }
 
     return NGX_CONF_OK;
