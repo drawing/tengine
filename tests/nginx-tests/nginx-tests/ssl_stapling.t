@@ -259,6 +259,12 @@ ok(!staple(8443, 'RSA'), 'staple revoked');
 TODO: {
 local $TODO = 'broken TLSv1.3 sigalgs in LibreSSL'
 	if $t->has_module('LibreSSL') && test_tls13();
+local $TODO = 'broken TLSv1.3 sigalgs in OpenSSL 1.1.1'
+	if $Net::SSLeay::VERSION >= 1.88
+	&& $Net::SSLeay::VERSION < 1.94
+	&& test_tls13()
+	&& !$t->has_module('LibreSSL')
+	&& !$t->has_module('BoringSSL');
 ok(staple(8443, 'ECDSA'), 'staple success');
 
 }
@@ -266,11 +272,24 @@ ok(!staple(8444, 'RSA'), 'responder revoked');
 TODO: {
 local $TODO = 'broken TLSv1.3 sigalgs in LibreSSL'
 	if $t->has_module('LibreSSL') && test_tls13();
+local $TODO = 'broken TLSv1.3 sigalgs in OpenSSL 1.1.1'
+	if $Net::SSLeay::VERSION >= 1.88
+	&& $Net::SSLeay::VERSION < 1.94
+	&& test_tls13()
+	&& !$t->has_module('LibreSSL')
+	&& !$t->has_module('BoringSSL');
 ok(staple(8444, 'ECDSA'), 'responder success');
 
 }
 ok(!staple(8445, 'ECDSA'), 'verify - root not trusted');
 
+TODO: {
+local $TODO = 'broken TLSv1.3 sigalgs in OpenSSL 1.1.1'
+	if $Net::SSLeay::VERSION >= 1.88
+	&& $Net::SSLeay::VERSION < 1.94
+	&& test_tls13()
+	&& !$t->has_module('LibreSSL')
+	&& !$t->has_module('BoringSSL');
 ok(staple(8446, 'ECDSA', "$d/int.crt"), 'cert store');
 }
 
@@ -282,6 +301,12 @@ ok(!staple(8449, 'ECDSA'), 'ocsp error');
 TODO: {
 local $TODO = 'broken TLSv1.3 sigalgs in LibreSSL'
 	if $t->has_module('LibreSSL') && test_tls13();
+local $TODO = 'broken TLSv1.3 sigalgs in OpenSSL 1.1.1'
+	if $Net::SSLeay::VERSION >= 1.88
+	&& $Net::SSLeay::VERSION < 1.94
+	&& test_tls13()
+	&& !$t->has_module('LibreSSL')
+	&& !$t->has_module('BoringSSL');
 like(`grep -F '[crit]' ${\($t->testdir())}/error.log`, qr/^$/s, 'no crit');
 }
 ###############################################################################
