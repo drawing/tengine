@@ -6,7 +6,6 @@
 
 #include <ngx_core.h>
 #include <ngx_config.h>
-#include <ngx_segment_tree.h>
 
 
 #define ngx_segment_node_copy(s,t)  \

@@ -44,6 +44,11 @@ typedef union {
 } ngx_sockaddr_t;
 
 
+#if (T_NGX_DNS_RESOLVE_BACKUP)
+#define NGX_DNS_RESOLVE_BACKUP_PATH             "NGX_DNS_RESOLVE_BACKUP_PATH"
+#endif
+
+
 typedef struct {
     in_addr_t                 addr;
     in_addr_t                 mask;
