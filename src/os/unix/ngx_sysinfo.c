@@ -6,7 +6,6 @@
 
 #include <ngx_config.h>
 #include <ngx_core.h>
-#include "ngx_sysinfo.h"
 
 #if (NGX_HAVE_SYSINFO)
 #include <sys/sysinfo.h>

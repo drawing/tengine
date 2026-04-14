@@ -182,26 +182,6 @@ ngx_http_chunked_body_filter(ngx_http_request_t *r, ngx_chain_t *in)
         out = tl;
     }
 
-#if (NGX_HTTP_V3)
-    if (r->http_version == NGX_HTTP_VERSION_30) {
-
-        if (cl->buf->last_buf) {
-            tl = ngx_http_v3_create_trailers(r);
-            if (tl == NULL) {
-                return NGX_ERROR;
-            }
-
-            cl->buf->last_buf = 0;
-
-            *ll = tl;
-
-        } else {
-            *ll = NULL;
-        }
-
-    } else
-#endif
-
     if (cl->buf->last_buf) {
         tl = ngx_http_chunked_create_trailers(r, ctx);
         if (tl == NULL) {

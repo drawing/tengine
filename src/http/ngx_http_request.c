@@ -2273,31 +2273,6 @@ ngx_http_alloc_large_header_buffer(ngx_http_request_t *r,
         }
 #endif
 
-#if (NGX_HTTP_PROXY_CONNECT)
-        if (r->connect_host_start) {
-            r->connect_host_start = new + (r->connect_host_start - old);
-            if (r->connect_host_end) {
-                r->connect_host_end = new + (r->connect_host_end - old);
-            }
-
-            if (r->connect_port_end) {
-                r->connect_port_end = new + (r->connect_port_end - old);
-            }
-        }
-
-#if (NGX_HTTP_PROXY_CONNECT)
-        if (r->connect_host_start) {
-            r->connect_host_start = new + (r->connect_host_start - old);
-            if (r->connect_host_end) {
-                r->connect_host_end = new + (r->connect_host_end - old);
-            }
-
-            if (r->connect_port_end) {
-                r->connect_port_end = new + (r->connect_port_end - old);
-            }
-        }
-#endif
-
         if (r->host_start) {
             r->host_start = new + (r->host_start - old);
             if (r->host_end) {
@@ -2532,39 +2507,6 @@ ngx_http_process_request_header(ngx_http_request_t *r)
                    "client sent HTTP/1.1 request without \"Host\" header");
         ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
         return NGX_ERROR;
-    }
-
-    if (r->headers_in.host == NULL && r->http_version == NGX_HTTP_VERSION_20) {
-        ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                      "client sent HTTP/2 request without "
-                      "\":authority\" or \"Host\" header");
-        ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-        return NGX_ERROR;
-    }
-
-    if (r->http_version == NGX_HTTP_VERSION_30) {
-        if (r->headers_in.server.len == 0) {
-            ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                          "client sent HTTP/3 request without "
-                          "\":authority\" or \"Host\" header");
-            ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-            return NGX_ERROR;
-        }
-
-        if (r->headers_in.host) {
-            if (r->headers_in.host->value.len != r->headers_in.server.len
-                || ngx_memcmp(r->headers_in.host->value.data,
-                              r->headers_in.server.data,
-                              r->headers_in.server.len)
-                   != 0)
-            {
-                ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,
-                              "client sent HTTP/3 request with different "
-                              "values of \":authority\" and \"Host\" headers");
-                ngx_http_finalize_request(r, NGX_HTTP_BAD_REQUEST);
-                return NGX_ERROR;
-            }
-        }
     }
 
     if (r->headers_in.content_length) {
@@ -4396,12 +4338,6 @@ ngx_http_free_request(ngx_http_request_t *r, ngx_int_t rc)
     if (r->connection->timedout) {
         clcf = ngx_http_get_module_loc_conf(r, ngx_http_core_module);
 
-#if (NGX_HTTP_V3)
-        if (r->connection->quic) {
-            (void) ngx_quic_reset_stream(r->connection,
-                                       NGX_HTTP_V3_ERR_GENERAL_PROTOCOL_ERROR);
-        } else
-#endif
         if (clcf->reset_timedout_connection) {
             linger.l_onoff = 1;
             linger.l_linger = 0;
@@ -4413,14 +4349,6 @@ ngx_http_free_request(ngx_http_request_t *r, ngx_int_t rc)
                               "setsockopt(SO_LINGER) failed");
             }
         }
-
-    } else if (!r->response_sent) {
-#if (NGX_HTTP_V3)
-        if (r->connection->quic) {
-            (void) ngx_quic_reset_stream(r->connection,
-                                         NGX_HTTP_V3_ERR_INTERNAL_ERROR);
-        }
-#endif
     }
 
     /* the various request strings were allocated from r->pool */
