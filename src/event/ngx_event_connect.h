@@ -75,6 +75,7 @@ struct ngx_peer_connection_s {
     unsigned                         resolved:2;
 #endif
 
+                                     /* ngx_connection_log_error_e */
     unsigned                         log_error:2;
 
     NGX_COMPAT_BEGIN(2)

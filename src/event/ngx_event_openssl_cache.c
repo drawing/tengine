@@ -215,7 +215,532 @@ ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
         return type->create(&id, err, data);
     }
 
-(fix: register ngx_openssl_cache_module and add SSL cache fallback logic)
+    type = &ngx_ssl_cache_types[index];
+    hash = ngx_murmur_hash2(id.data, id.len);
+
+    cn = ngx_ssl_cache_lookup(cache, type, &id, hash);
+
+    if (cn != NULL) {
+        if (!invalidate) {
+            return type->ref(err, cn->value);
+        }
+
+        type->free(cn->value);
+        ngx_rbtree_delete(&cache->rbtree, &cn->node);
+    }
+
+    value = NULL;
+
+    if (id.type == NGX_SSL_CACHE_PATH
+        && (rc = ngx_file_info(id.data, &fi)) != NGX_FILE_ERROR)
+    {
+        mtime = ngx_file_mtime(&fi);
+        uniq = ngx_file_uniq(&fi);
+
+    } else {
+        rc = NGX_FILE_ERROR;
+        mtime = 0;
+        uniq = 0;
+    }
+
+    /* try to use a reference from the old cycle */
+
+    old_cache = ngx_ssl_cache_get_old_conf(cf->cycle);
+
+    if (old_cache && old_cache->inheritable && !invalidate) {
+        cn = ngx_ssl_cache_lookup(old_cache, type, &id, hash);
+
+        if (cn != NULL) {
+            switch (id.type) {
+
+            case NGX_SSL_CACHE_DATA:
+                value = type->ref(err, cn->value);
+                break;
+
+            default:
+                if (rc != NGX_FILE_ERROR
+                    && uniq == cn->uniq && mtime == cn->mtime)
+                {
+                    value = type->ref(err, cn->value);
+                }
+                break;
+            }
+        }
+    }
+
+    if (value == NULL) {
+        value = type->create(&id, err, &data);
+
+        if (value == NULL || data == NGX_SSL_CACHE_DISABLED) {
+            return value;
+        }
+    }
+
+    cn = ngx_palloc(cf->pool, sizeof(ngx_ssl_cache_node_t) + id.len + 1);
+    if (cn == NULL) {
+        type->free(value);
+        return NULL;
+    }
+
+    cn->node.key = hash;
+    cn->id.data = (u_char *)(cn + 1);
+    cn->id.len = id.len;
+    cn->id.type = id.type;
+    cn->type = type;
+    cn->value = value;
+    cn->mtime = mtime;
+    cn->uniq = uniq;
+
+    ngx_cpystrn(cn->id.data, id.data, id.len + 1);
+
+    ngx_queue_init(&cn->queue);
+
+    ngx_rbtree_insert(&cache->rbtree, &cn->node);
+
+    return type->ref(err, cn->value);
+}
+
+
+void *
+ngx_ssl_cache_connection_fetch(ngx_ssl_cache_t *cache, ngx_pool_t *pool,
+    ngx_uint_t index, char **err, ngx_str_t *path, void *data)
+{
+    void                  *value;
+    time_t                 now;
+    uint32_t               hash;
+    ngx_uint_t             invalidate;
+    ngx_file_info_t        fi;
+    ngx_ssl_cache_key_t    id;
+    ngx_ssl_cache_type_t  *type;
+    ngx_ssl_cache_node_t  *cn;
+
+    *err = NULL;
+
+    invalidate = index & NGX_SSL_CACHE_INVALIDATE;
+    index &= ~NGX_SSL_CACHE_INVALIDATE;
+
+    if (ngx_ssl_cache_init_key(pool, index, path, &id) != NGX_OK) {
+        return NULL;
+    }
+
+    type = &ngx_ssl_cache_types[index];
+
+    if (cache == NULL) {
+        return type->create(&id, err, &data);
+    }
+
+    now = ngx_time();
+
+    hash = ngx_murmur_hash2(id.data, id.len);
+
+    cn = ngx_ssl_cache_lookup(cache, type, &id, hash);
+
+    if (cn != NULL) {
+        ngx_queue_remove(&cn->queue);
+
+        if (id.type == NGX_SSL_CACHE_DATA) {
+            goto found;
+        }
+
+        if (!invalidate && now - cn->created <= cache->valid) {
+            goto found;
+        }
+
+        switch (id.type) {
+
+        case NGX_SSL_CACHE_PATH:
+
+            if (ngx_file_info(id.data, &fi) != NGX_FILE_ERROR) {
+
+                if (!invalidate
+                    && ngx_file_uniq(&fi) == cn->uniq
+                    && ngx_file_mtime(&fi) == cn->mtime)
+                {
+                    break;
+                }
+
+                cn->mtime = ngx_file_mtime(&fi);
+                cn->uniq = ngx_file_uniq(&fi);
+
+            } else {
+                cn->mtime = 0;
+                cn->uniq = 0;
+            }
+
+            /* fall through */
+
+        default:
+            ngx_log_debug1(NGX_LOG_DEBUG_CORE, pool->log, 0,
+                           "update cached ssl object: %s", cn->id.data);
+
+            type->free(cn->value);
+
+            value = type->create(&id, err, &data);
+
+            if (value == NULL || data == NGX_SSL_CACHE_DISABLED) {
+                ngx_rbtree_delete(&cache->rbtree, &cn->node);
+
+                cache->current--;
+
+                ngx_free(cn);
+
+                return value;
+            }
+
+            cn->value = value;
+        }
+
+        cn->created = now;
+
+        goto found;
+    }
+
+    value = type->create(&id, err, &data);
+
+    if (value == NULL || data == NGX_SSL_CACHE_DISABLED) {
+        return value;
+    }
+
+    cn = ngx_alloc(sizeof(ngx_ssl_cache_node_t) + id.len + 1, pool->log);
+    if (cn == NULL) {
+        type->free(value);
+        return NULL;
+    }
+
+    cn->node.key = hash;
+    cn->id.data = (u_char *)(cn + 1);
+    cn->id.len = id.len;
+    cn->id.type = id.type;
+    cn->type = type;
+    cn->value = value;
+    cn->created = now;
+
+    ngx_cpystrn(cn->id.data, id.data, id.len + 1);
+
+    if (id.type == NGX_SSL_CACHE_PATH) {
+
+        if (ngx_file_info(id.data, &fi) != NGX_FILE_ERROR) {
+            cn->mtime = ngx_file_mtime(&fi);
+            cn->uniq = ngx_file_uniq(&fi);
+
+        } else {
+            cn->mtime = 0;
+            cn->uniq = 0;
+        }
+    }
+
+    ngx_ssl_cache_expire(cache, 1, pool->log);
+
+    if (cache->current >= cache->max) {
+        ngx_ssl_cache_expire(cache, 0, pool->log);
+    }
+
+    ngx_rbtree_insert(&cache->rbtree, &cn->node);
+
+    cache->current++;
+
+found:
+
+    cn->accessed = now;
+
+    ngx_queue_insert_head(&cache->expire_queue, &cn->queue);
+
+    return type->ref(err, cn->value);
+}
+
+
+static ngx_int_t
+ngx_ssl_cache_init_key(ngx_pool_t *pool, ngx_uint_t index, ngx_str_t *path,
+    ngx_ssl_cache_key_t *id)
+{
+    if (index <= NGX_SSL_CACHE_PKEY
+        && ngx_strncmp(path->data, "data:", sizeof("data:") - 1) == 0)
+    {
+        id->type = NGX_SSL_CACHE_DATA;
+
+    } else if (index == NGX_SSL_CACHE_PKEY
+        && ngx_strncmp(path->data, "engine:", sizeof("engine:") - 1) == 0)
+    {
+        id->type = NGX_SSL_CACHE_ENGINE;
+
+    } else {
+        if (ngx_get_full_name(pool, (ngx_str_t *) &ngx_cycle->conf_prefix, path)
+            != NGX_OK)
+        {
+            return NGX_ERROR;
+        }
+
+        id->type = NGX_SSL_CACHE_PATH;
+    }
+
+    id->len = path->len;
+    id->data = path->data;
+
+    return NGX_OK;
+}
+
+
+static ngx_ssl_cache_node_t *
+ngx_ssl_cache_lookup(ngx_ssl_cache_t *cache, ngx_ssl_cache_type_t *type,
+    ngx_ssl_cache_key_t *id, uint32_t hash)
+{
+    ngx_int_t              rc;
+    ngx_rbtree_node_t     *node, *sentinel;
+    ngx_ssl_cache_node_t  *cn;
+
+    node = cache->rbtree.root;
+    sentinel = cache->rbtree.sentinel;
+
+    while (node != sentinel) {
+
+        if (hash < node->key) {
+            node = node->left;
+            continue;
+        }
+
+        if (hash > node->key) {
+            node = node->right;
+            continue;
+        }
+
+        /* hash == node->key */
+
+        cn = (ngx_ssl_cache_node_t *) node;
+
+        if (type < cn->type) {
+            node = node->left;
+            continue;
+        }
+
+        if (type > cn->type) {
+            node = node->right;
+            continue;
+        }
+
+        /* type == cn->type */
+
+        rc = ngx_memn2cmp(id->data, cn->id.data, id->len, cn->id.len);
+
+        if (rc == 0) {
+            return cn;
+        }
+
+        node = (rc < 0) ? node->left : node->right;
+    }
+
+    return NULL;
+}
+
+
+static void
+ngx_ssl_cache_expire(ngx_ssl_cache_t *cache, ngx_uint_t n,
+    ngx_log_t *log)
+{
+    time_t                 now;
+    ngx_queue_t           *q;
+    ngx_ssl_cache_node_t  *cn;
+
+    now = ngx_time();
+
+    while (n < 3) {
+
+        if (ngx_queue_empty(&cache->expire_queue)) {
+            return;
+        }
+
+        q = ngx_queue_last(&cache->expire_queue);
+
+        cn = ngx_queue_data(q, ngx_ssl_cache_node_t, queue);
+
+        if (n++ != 0 && now - cn->accessed <= cache->inactive) {
+            return;
+        }
+
+        ngx_ssl_cache_node_free(&cache->rbtree, cn);
+
+        cache->current--;
+    }
+}
+
+
+static void *
+ngx_ssl_cache_cert_create(ngx_ssl_cache_key_t *id, char **err, void *data)
+{
+    BIO             *bio;
+    X509            *x509;
+    u_long           n;
+    STACK_OF(X509)  *chain;
+
+    chain = sk_X509_new_null();
+    if (chain == NULL) {
+        *err = "sk_X509_new_null() failed";
+        return NULL;
+    }
+
+    bio = ngx_ssl_cache_create_bio(id, err);
+    if (bio == NULL) {
+        sk_X509_pop_free(chain, X509_free);
+        return NULL;
+    }
+
+    /* certificate itself */
+
+    x509 = PEM_read_bio_X509_AUX(bio, NULL, NULL, NULL);
+    if (x509 == NULL) {
+        *err = "PEM_read_bio_X509_AUX() failed";
+        BIO_free(bio);
+        sk_X509_pop_free(chain, X509_free);
+        return NULL;
+    }
+
+    if (sk_X509_push(chain, x509) == 0) {
+        *err = "sk_X509_push() failed";
+        BIO_free(bio);
+        X509_free(x509);
+        sk_X509_pop_free(chain, X509_free);
+        return NULL;
+    }
+
+    /* rest of the chain */
+
+    for ( ;; ) {
+
+        x509 = PEM_read_bio_X509(bio, NULL, NULL, NULL);
+        if (x509 == NULL) {
+            n = ERR_peek_last_error();
+
+            if (ERR_GET_LIB(n) == ERR_LIB_PEM
+                && ERR_GET_REASON(n) == PEM_R_NO_START_LINE)
+            {
+                /* end of file */
+                ERR_clear_error();
+                break;
+            }
+
+            /* some real error */
+
+            *err = "PEM_read_bio_X509() failed";
+            BIO_free(bio);
+            sk_X509_pop_free(chain, X509_free);
+            return NULL;
+        }
+
+        if (sk_X509_push(chain, x509) == 0) {
+            *err = "sk_X509_push() failed";
+            BIO_free(bio);
+            X509_free(x509);
+            sk_X509_pop_free(chain, X509_free);
+            return NULL;
+        }
+    }
+
+    BIO_free(bio);
+
+    return chain;
+}
+
+
+static void
+ngx_ssl_cache_cert_free(void *data)
+{
+    sk_X509_pop_free(data, X509_free);
+}
+
+
+static void *
+ngx_ssl_cache_cert_ref(char **err, void *data)
+{
+    int              n, i;
+    X509            *x509;
+    STACK_OF(X509)  *chain;
+
+    chain = sk_X509_dup(data);
+    if (chain == NULL) {
+        *err = "sk_X509_dup() failed";
+        return NULL;
+    }
+
+    n = sk_X509_num(chain);
+
+    for (i = 0; i < n; i++) {
+        x509 = sk_X509_value(chain, i);
+
+#if (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+        X509_up_ref(x509);
+#else
+        CRYPTO_add(&x509->references, 1, CRYPTO_LOCK_X509);
+#endif
+    }
+
+    return chain;
+}
+
+
+static void *
+ngx_ssl_cache_pkey_create(ngx_ssl_cache_key_t *id, char **err, void *data)
+{
+    ngx_array_t  **passwords = data;
+
+    BIO                  *bio;
+    EVP_PKEY             *pkey;
+    ngx_uint_t            tries;
+    pem_password_cb      *cb;
+    ngx_ssl_cache_pwd_t   cb_data, *pwd;
+
+    if (id->type == NGX_SSL_CACHE_ENGINE) {
+
+#ifndef OPENSSL_NO_ENGINE
+
+        u_char  *p, *last;
+        ENGINE  *engine;
+
+        p = id->data + sizeof("engine:") - 1;
+        last = (u_char *) ngx_strchr(p, ':');
+
+        if (last == NULL) {
+            *err = "invalid syntax";
+            return NULL;
+        }
+
+        *last = '\0';
+
+        engine = ENGINE_by_id((char *) p);
+
+        *last++ = ':';
+
+        if (engine == NULL) {
+            *err = "ENGINE_by_id() failed";
+            return NULL;
+        }
+
+        pkey = ENGINE_load_private_key(engine, (char *) last, NULL, NULL);
+
+        if (pkey == NULL) {
+            *err = "ENGINE_load_private_key() failed";
+            ENGINE_free(engine);
+            return NULL;
+        }
+
+        ENGINE_free(engine);
+
+        return pkey;
+
+#else
+
+        *err = "loading \"engine:...\" certificate keys is not supported";
+        return NULL;
+
+#endif
+    }
+
+    bio = ngx_ssl_cache_create_bio(id, err);
+    if (bio == NULL) {
+        return NULL;
+    }
+
+    cb_data.encrypted = 0;
+
+    if (passwords != NULL && *passwords) {
         cb_data.pwd = (*passwords)->elts;
         tries = (*passwords)->nelts;
         pwd = &cb_data;

@@ -41,6 +41,7 @@
 #endif
 
 
+typedef struct {
     ngx_event_handler_pt       handler;
     char                      *name;
     ngx_msec_t                 delay;

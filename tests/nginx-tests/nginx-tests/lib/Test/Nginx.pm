@@ -143,9 +143,9 @@ sub has_module($) {
 		rewrite	=> '(?s)^(?!.*--without-http_rewrite_module)',
 		proxy	=> '(?s)^(?!.*--without-http_proxy_module)',
 		fastcgi	=> '(?s)^(?!.*--without-http_fastcgi_module)',
-		uwsgi	=> '--with-http_uwsgi_module',
-		scgi	=> '--with-http_scgi_module',
-		grpc	=> '--with-http_grpc_module',
+		uwsgi	=> '(?s)^(?!.*--without-http_uwsgi_module)',
+		scgi	=> '(?s)^(?!.*--without-http_scgi_module)',
+		grpc	=> '(?s)^(?!.*--without-http_grpc_module)',
 		memcached
 			=> '(?s)^(?!.*--without-http_memcached_module)',
 		limit_conn
@@ -766,8 +766,6 @@ sub test_globals_http() {
 	$s .= "client_body_temp_path $self->{_testdir}/client_body_temp;\n";
 	$s .= "lua_package_path \"/home/bo.deng/local/share/lua/5.1/?.lua;/usr/local/lib/lua/?.lua;;\";\n"
 		if $self->has_module('lua');
-
- (test: upgrade nginx-tests to 1.28.3 and update CHANGES/README)
 
 	$s .= "fastcgi_temp_path $self->{_testdir}/fastcgi_temp;\n"
 		if $self->has_module('fastcgi');
