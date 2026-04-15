@@ -1,3 +1,4 @@
+
 # Copyright (C) Igor Sysoev
 # Copyright (C) Nginx, Inc.
 
@@ -17,11 +18,6 @@ mkdir -p $NGX_OBJS/src/core $NGX_OBJS/src/event $NGX_OBJS/src/event/modules \
          $NGX_OBJS/modules
 
 
-ngx_objs_dir=$NGX_OBJS$ngx_regex_dirsep
-ngx_use_pch=`echo $NGX_USE_PCH | sed -e "s/\//$ngx_regex_dirsep/g"`
-
-
-cat << END                                                     > $NGX_MAKEFILE
 ngx_objs_dir=$NGX_OBJS$ngx_regex_dirsep
 ngx_use_pch=`echo $NGX_USE_PCH | sed -e "s/\//$ngx_regex_dirsep/g"`
 
