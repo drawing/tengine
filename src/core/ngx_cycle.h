@@ -42,6 +42,14 @@ struct ngx_cycle_s {
 
     ngx_log_t                *log;
     ngx_log_t                 new_log;
+#if (T_NGX_XQUIC)
+    ngx_log_t                *x_log;
+    ngx_log_t                 xquic_log;
+#endif
+
+#if (T_NGX_HAVE_XUDP)
+    ngx_xudp_cycle_ctx_t     *xudp_ctx ;
+#endif
 
     ngx_uint_t                log_use_stderr;  /* unsigned  log_use_stderr:1; */
 
@@ -73,6 +81,9 @@ struct ngx_cycle_s {
     ngx_connection_t         *connections;
     ngx_event_t              *read_events;
     ngx_event_t              *write_events;
+#if (NGX_SSL && NGX_SSL_ASYNC)
+    ngx_event_t              *async_events;
+#endif
 
     ngx_cycle_t              *old_cycle;
 
@@ -83,6 +94,9 @@ struct ngx_cycle_s {
     ngx_str_t                 error_log;
     ngx_str_t                 lock_file;
     ngx_str_t                 hostname;
+#if (NGX_SSL && NGX_SSL_ASYNC)
+    ngx_flag_t                no_ssl_init;
+#endif
 };
 
 
@@ -119,6 +133,11 @@ typedef struct {
     char                    **environment;
 
     ngx_uint_t                transparent;  /* unsigned  transparent:1; */
+
+#if (T_PIPE_SET_SIZE)
+    size_t pipe_size;
+#endif
+
 } ngx_core_conf_t;
 
 
@@ -144,6 +163,10 @@ extern ngx_module_t           ngx_core_module;
 extern ngx_uint_t             ngx_test_config;
 extern ngx_uint_t             ngx_dump_config;
 extern ngx_uint_t             ngx_quiet_mode;
+#if (T_NGX_SHOW_INFO)
+extern ngx_uint_t             ngx_show_modules;
+extern ngx_uint_t             ngx_show_directives;
+#endif
 
 
 #endif /* _NGX_CYCLE_H_INCLUDED_ */

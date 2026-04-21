@@ -39,6 +39,9 @@ struct ngx_peer_connection_s {
     struct sockaddr                 *sockaddr;
     socklen_t                        socklen;
     ngx_str_t                       *name;
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)    
+    ngx_str_t                       *host;
+#endif
 
     ngx_uint_t                       tries;
     ngx_msec_t                       start_time;
@@ -57,6 +60,9 @@ struct ngx_peer_connection_s {
 
     int                              type;
     int                              rcvbuf;
+#if (T_NGX_SOCKET_BUFFER)
+    int                              sndbuf;
+#endif
 
     ngx_log_t                       *log;
 
@@ -64,6 +70,10 @@ struct ngx_peer_connection_s {
     unsigned                         transparent:1;
     unsigned                         so_keepalive:1;
     unsigned                         down:1;
+
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)    
+    unsigned                         resolved:2;
+#endif
 
                                      /* ngx_connection_log_error_e */
     unsigned                         log_error:2;

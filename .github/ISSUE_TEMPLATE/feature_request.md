@@ -1,18 +1,19 @@
 ---
 name: Feature request
-about: Suggest a feature for nginx
-title: ""
-labels: "feature"
+about: Suggest an idea for this project
+title: ''
+labels: ''
+assignees: ''
+
 ---
 
-### Describe the feature you'd like to add to nginx
+## Why you need it?
+<!-- Is your feature request related to a problem? Please describe in details  -->
 
-A clear and concise description of the feature.
 
-### Describe the problem this feature solves
+## How it could be?
+<!--A clear and concise description of what you want to happen. For a computer fan,  you can explain more about input of the feature, and output of it.-->
 
-A clear and concise description of the problem.
 
-### Additional context
-
-Add any other context about the feature request here.
+## Other related information
+<!-- Add any other context or screenshots about the feature request here.-->

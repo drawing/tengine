@@ -13,7 +13,6 @@
 static void ngx_show_version_info(void);
 static ngx_int_t ngx_add_inherited_sockets(ngx_cycle_t *cycle);
 static void ngx_cleanup_environment(void *data);
-static void ngx_cleanup_environment_variable(void *data);
 static ngx_int_t ngx_get_options(int argc, char *const *argv);
 static ngx_int_t ngx_process_options(ngx_cycle_t *cycle);
 static ngx_int_t ngx_save_argv(ngx_cycle_t *cycle, int argc, char *const *argv);
@@ -29,6 +28,9 @@ static char *ngx_set_worker_processes(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_load_module(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 #if (NGX_HAVE_DLOPEN)
 static void ngx_unload_module(void *data);
+#endif
+#if (T_NGX_MASTER_ENV)
+static char *ngx_master_set_env(ngx_conf_t *cf, ngx_command_t *cmd, void *conf);
 #endif
 
 
@@ -153,6 +155,26 @@ static ngx_command_t  ngx_core_commands[] = {
       0,
       NULL },
 
+#if (T_NGX_MASTER_ENV)
+
+    { ngx_string("master_env"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_master_set_env,
+      0,
+      0,
+      NULL },
+
+#endif
+
+#if (T_PIPE_SET_SIZE)
+    { ngx_string("pipe_set_size"),
+      NGX_MAIN_CONF|NGX_DIRECT_CONF|NGX_CONF_TAKE1,
+      ngx_conf_set_size_slot,
+      0,
+      offsetof(ngx_core_conf_t, pipe_size),
+      NULL },
+#endif
+
       ngx_null_command
 };
 
@@ -183,6 +205,12 @@ ngx_module_t  ngx_core_module = {
 static ngx_uint_t   ngx_show_help;
 static ngx_uint_t   ngx_show_version;
 static ngx_uint_t   ngx_show_configure;
+#if (NGX_SSL && NGX_SSL_ASYNC)
+/* indicate that nginx start without ngx_ssl_init()
+ * which will involve OpenSSL configuration file to
+ * start OpenSSL engine */
+static ngx_uint_t   ngx_no_ssl_init;
+#endif
 static u_char      *ngx_prefix;
 static u_char      *ngx_error_log;
 static u_char      *ngx_conf_file;
@@ -239,7 +267,13 @@ main(int argc, char *const *argv)
 
     /* STUB */
 #if (NGX_OPENSSL)
-    ngx_ssl_init(log);
+#if (NGX_SSL && NGX_SSL_ASYNC)
+    if (!ngx_no_ssl_init) {
+#endif
+        ngx_ssl_init(log);
+#if (NGX_SSL && NGX_SSL_ASYNC)
+    }
+#endif
 #endif
 
     /*
@@ -249,6 +283,9 @@ main(int argc, char *const *argv)
 
     ngx_memzero(&init_cycle, sizeof(ngx_cycle_t));
     init_cycle.log = log;
+#if (NGX_SSL && NGX_SSL_ASYNC)
+    init_cycle.no_ssl_init = ngx_no_ssl_init;
+#endif
     ngx_cycle = &init_cycle;
 
     init_cycle.pool = ngx_create_pool(1024, log);
@@ -360,6 +397,13 @@ main(int argc, char *const *argv)
 
 #endif
 
+#if (T_PIPES)
+    if (ngx_open_pipes(cycle) == NGX_ERROR) {
+        ngx_log_error(NGX_LOG_EMERG, cycle->log, 0, "can not open pipes");
+        return 1;
+    }
+#endif
+
     if (ngx_create_pidfile(&ccf->pid, cycle->log) != NGX_OK) {
         return 1;
     }
@@ -391,6 +435,9 @@ main(int argc, char *const *argv)
 static void
 ngx_show_version_info(void)
 {
+#if (T_NGX_SERVER_INFO) 
+    ngx_write_stderr("Tengine version: " TENGINE_VER_BUILD NGX_LINEFEED);
+#endif
     ngx_write_stderr("nginx version: " NGINX_VER_BUILD NGX_LINEFEED);
 
     if (ngx_show_help) {
@@ -426,6 +473,10 @@ ngx_show_version_info(void)
                                ")" NGX_LINEFEED
             "  -g directives : set global directives out of configuration "
                                "file" NGX_LINEFEED NGX_LINEFEED
+#if (T_NGX_SHOW_INFO)
+            "  -m            : show all modules and exit" NGX_LINEFEED
+            "  -l            : show all directives and exit" NGX_LINEFEED
+#endif
         );
     }
 
@@ -519,8 +570,7 @@ ngx_add_inherited_sockets(ngx_cycle_t *cycle)
 char **
 ngx_set_environment(ngx_cycle_t *cycle, ngx_uint_t *last)
 {
-    char                **p, **env, *str;
-    size_t                len;
+    char                **p, **env;
     ngx_str_t            *var;
     ngx_uint_t            i, n;
     ngx_core_conf_t      *ccf;
@@ -602,31 +652,7 @@ tz_found:
     for (i = 0; i < ccf->env.nelts; i++) {
 
         if (var[i].data[var[i].len] == '=') {
-
-            if (last) {
-                env[n++] = (char *) var[i].data;
-                continue;
-            }
-
-            cln = ngx_pool_cleanup_add(cycle->pool, 0);
-            if (cln == NULL) {
-                return NULL;
-            }
-
-            len = ngx_strlen(var[i].data) + 1;
-
-            str = ngx_alloc(len, cycle->log);
-            if (str == NULL) {
-                return NULL;
-            }
-
-            ngx_memcpy(str, var[i].data, len);
-
-            cln->handler = ngx_cleanup_environment_variable;
-            cln->data = str;
-
-            env[n++] = str;
-
+            env[n++] = (char *) var[i].data;
             continue;
         }
 
@@ -671,29 +697,6 @@ ngx_cleanup_environment(void *data)
 }
 
 
-static void
-ngx_cleanup_environment_variable(void *data)
-{
-    char  *var = data;
-
-    char  **p;
-
-    for (p = environ; *p; p++) {
-
-        /*
-         * if an environment variable is still used, as it happens on exit,
-         * the only option is to leak it
-         */
-
-        if (*p == var) {
-            return;
-        }
-    }
-
-    ngx_free(var);
-}
-
-
 ngx_pid_t
 ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 {
@@ -729,9 +732,6 @@ ngx_exec_new_binary(ngx_cycle_t *cycle, char *const *argv)
 
     ls = cycle->listening.elts;
     for (i = 0; i < cycle->listening.nelts; i++) {
-        if (ls[i].ignore) {
-            continue;
-        }
         p = ngx_sprintf(p, "%ud;", ls[i].fd);
     }
 
@@ -834,16 +834,36 @@ ngx_get_options(int argc, char *const *argv)
 
             case 't':
                 ngx_test_config = 1;
+#if (NGX_SSL && NGX_SSL_ASYNC)
+                ngx_no_ssl_init = 1;
+#endif
                 break;
 
             case 'T':
                 ngx_test_config = 1;
                 ngx_dump_config = 1;
+#if (NGX_SSL && NGX_SSL_ASYNC)
+                ngx_no_ssl_init = 1;
+#endif
                 break;
 
             case 'q':
                 ngx_quiet_mode = 1;
                 break;
+
+#if (T_NGX_SHOW_INFO)
+            case 'l':
+                ngx_test_config = 1;
+                ngx_show_version = 1;
+                ngx_show_directives = 1;
+                break;
+
+            case 'm':
+                ngx_test_config = 1;
+                ngx_show_version = 1;
+                ngx_show_modules = 1;
+                break;
+#endif
 
             case 'p':
                 if (*p) {
@@ -906,6 +926,9 @@ ngx_get_options(int argc, char *const *argv)
                 return NGX_ERROR;
 
             case 's':
+#if (NGX_SSL && NGX_SSL_ASYNC)
+                ngx_no_ssl_init = 1;
+#endif
                 if (*p) {
                     ngx_signal = (char *) p;
 
@@ -931,6 +954,9 @@ ngx_get_options(int argc, char *const *argv)
 
             default:
                 ngx_log_stderr(0, "invalid option: \"%c\"", *(p - 1));
+#if (NGX_SSL && NGX_SSL_ASYNC)
+                ngx_no_ssl_init = 1;
+#endif
                 return NGX_ERROR;
             }
         }
@@ -1131,6 +1157,10 @@ ngx_core_module_create_conf(ngx_cycle_t *cycle)
         return NULL;
     }
 
+#ifdef T_PIPE_SET_SIZE
+    ccf->pipe_size = NGX_CONF_UNSET_SIZE;
+#endif
+
     return ccf;
 }
 
@@ -1145,7 +1175,12 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
     ngx_conf_init_msec_value(ccf->timer_resolution, 0);
     ngx_conf_init_msec_value(ccf->shutdown_timeout, 0);
 
-    ngx_conf_init_value(ccf->worker_processes, 1);
+    ngx_conf_init_value(ccf->worker_processes,
+#if (T_NGX_MODIFY_DEFAULT_VALUE)
+                        ngx_ncpu);
+#else
+                        1);
+#endif
     ngx_conf_init_value(ccf->debug_points, 0);
 
 #if (NGX_HAVE_CPU_AFFINITY)
@@ -1258,6 +1293,16 @@ ngx_core_module_init_conf(ngx_cycle_t *cycle, void *conf)
     }
     }
 
+#endif
+
+#ifdef T_PIPE_SET_SIZE
+    if (ccf->pipe_size != NGX_CONF_UNSET_SIZE) {
+        if (ccf->pipe_size < 64 * 1024) {
+            ngx_log_error(NGX_LOG_EMERG, cycle->log, 0,
+                          "\"pipe_size\" must be at least 64K, ignored");
+            return NGX_CONF_ERROR;
+        }
+    }
 #endif
 
     return NGX_CONF_OK;
@@ -1671,6 +1716,49 @@ ngx_unload_module(void *data)
         ngx_log_error(NGX_LOG_ALERT, ngx_cycle->log, 0,
                       ngx_dlclose_n " failed (%s)", ngx_dlerror());
     }
+}
+
+#endif
+
+
+#if (T_NGX_MASTER_ENV)
+
+static char *
+ngx_master_set_env(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
+{
+    size_t       klen, vlen;
+    u_char      *key, *v, *p;
+    ngx_str_t   *value;
+
+    value = cf->args->elts;
+    p = ngx_strlchr(value[1].data, value[1].data + value[1].len, '=');
+    if (p == NULL) {
+        klen = value[1].len;
+        v = (u_char *) "1";
+
+    } else {
+        klen = p - value[1].data;
+        vlen = value[1].len - klen - 1;
+        v = ngx_palloc(cf->pool, vlen + 1);
+        if (v == NULL) {
+            return NGX_CONF_ERROR;
+        }
+
+        ngx_memcpy(v, p + 1, vlen);
+        v[vlen] = '\0';
+    }
+
+    key = ngx_palloc(cf->pool, klen + 1);
+    if (key == NULL) {
+        return NGX_CONF_ERROR;
+    }
+
+    ngx_memcpy(key, value[1].data, klen);
+    key[klen] = '\0';
+
+    setenv((char *) key, (char *) v, 0);
+
+    return NGX_CONF_OK;
 }
 
 #endif

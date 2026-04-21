@@ -1,38 +1,38 @@
 ---
 name: Bug report
 about: Create a report to help us improve
-title: ""
-labels: "bug"
+title: ''
+labels: ''
+assignees: ''
+
 ---
 
-### Environment
+### Ⅰ. Issue Description
 
-Include the result of the following commands:
-  - `nginx -V`
-  - `uname -a`
 
-### Description
+### Ⅱ. Describe what happened
 
-Describe the bug in full detail including expected and actual behavior.
-Specify conditions that caused it. Provide the relevant part of nginx
-configuration and debug log.
 
-- [ ] The bug is reproducible with the latest version of nginx
-- [ ] The nginx configuration is minimized to the smallest possible
-to reproduce the issue and doesn't contain third-party modules
+### Ⅲ. Describe what you expected to happen
 
-#### nginx configuration
 
-```
-# Your nginx configuration here
-```
-or share the configuration in [gist](https://gist.github.com/).
+### Ⅳ. How to reproduce it (as minimally and precisely as possible)
 
-#### nginx debug log
+1.
+2.
+3.
 
-It is advised to enable
-[debug logging](http://nginx.org/en/docs/debugging_log.html).
-```
-# Your nginx debug log here
-```
-or share the debug log in [gist](https://gist.github.com/).
+
+
+### Ⅴ. Anything else we need to know?
+
+1. If applicable, add nginx  [debug log doc](http://nginx.org/en/docs/debugging_log.html).
+2.
+3.
+
+### Ⅵ. Environment:
+
+- Tengine version (use `sbin/nginx -V`):
+- OS (e.g. from /etc/os-release):
+- Kernel (e.g. `uname -a`):
+- Others:
