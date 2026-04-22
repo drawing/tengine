@@ -102,6 +102,8 @@ struct ngx_ssl_s {
 #if (NGX_SSL && NGX_SSL_ASYNC)
     ngx_flag_t                  async_enable;
 #endif
+
+    ngx_array_t                 certs;
 };
 
 
@@ -222,6 +224,17 @@ typedef struct {
 #define NGX_SSL_BUFSIZE  16384
 
 
+typedef struct ngx_ssl_cache_s  ngx_ssl_cache_t;
+
+
+#define NGX_SSL_CACHE_CERT  0
+#define NGX_SSL_CACHE_PKEY  1
+#define NGX_SSL_CACHE_CRL   2
+#define NGX_SSL_CACHE_CA    3
+
+#define NGX_SSL_CACHE_INVALIDATE  0x80000000
+
+
 ngx_int_t ngx_ssl_init(ngx_log_t *log);
 ngx_int_t ngx_ssl_create(ngx_ssl_t *ssl, ngx_uint_t protocols, void *data);
 
@@ -258,6 +271,13 @@ ngx_int_t ngx_ssl_ocsp_validate(ngx_connection_t *c);
 ngx_int_t ngx_ssl_ocsp_get_status(ngx_connection_t *c, const char **s);
 void ngx_ssl_ocsp_cleanup(ngx_connection_t *c);
 ngx_int_t ngx_ssl_ocsp_cache_init(ngx_shm_zone_t *shm_zone, void *data);
+
+ngx_ssl_cache_t *ngx_ssl_cache_init(ngx_pool_t *pool, ngx_uint_t max,
+    time_t valid, time_t inactive);
+void *ngx_ssl_cache_fetch(ngx_conf_t *cf, ngx_uint_t index, char **err,
+    ngx_str_t *path, void *data);
+void *ngx_ssl_cache_connection_fetch(ngx_ssl_cache_t *cache, ngx_pool_t *pool,
+    ngx_uint_t index, char **err, ngx_str_t *path, void *data);
 
 ngx_array_t *ngx_ssl_read_password_file(ngx_conf_t *cf, ngx_str_t *file);
 ngx_array_t *ngx_ssl_preserve_passwords(ngx_conf_t *cf,
