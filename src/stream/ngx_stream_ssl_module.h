@@ -67,6 +67,11 @@ typedef struct {
 #if (T_NGX_STREAM_SNI)
     ngx_flag_t       sni_force;
 #endif
+
+    ngx_flag_t       stapling;
+    ngx_str_t        stapling_file;
+    ngx_str_t        stapling_responder;
+    ngx_flag_t       stapling_verify;
 } ngx_stream_ssl_conf_t;
 
 

@@ -132,6 +132,11 @@ ngx_int_t ngx_http_header_out(ngx_http_request_t *r, u_char *name, size_t len,
 
 ngx_http_request_t *ngx_http_create_request(ngx_connection_t *c);
 ngx_int_t ngx_http_process_request_uri(ngx_http_request_t *r);
+ngx_int_t ngx_http_validate_host(ngx_str_t *host, ngx_pool_t *pool,
+    ngx_uint_t alloc);
+ngx_int_t ngx_http_set_virtual_server(ngx_http_request_t *r,
+    ngx_str_t *host);
+void ngx_http_close_request(ngx_http_request_t *r, ngx_int_t rc);
 ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r);
 void ngx_http_process_request(ngx_http_request_t *r);
 void ngx_http_update_location_config(ngx_http_request_t *r);

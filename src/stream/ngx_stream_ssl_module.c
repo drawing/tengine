@@ -267,56 +267,6 @@ static ngx_command_t  ngx_stream_ssl_commands[] = {
       offsetof(ngx_stream_ssl_conf_t, crl),
       NULL },
 
-    { ngx_string("ssl_ocsp"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_enum_slot,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, ocsp),
-      &ngx_stream_ssl_ocsp },
-
-    { ngx_string("ssl_ocsp_responder"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_str_slot,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_conf_t, ocsp_responder),
-      NULL },
-
-    { ngx_string("ssl_ocsp_cache"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_stream_ssl_ocsp_cache,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      0,
-      NULL },
-
-    { ngx_string("ssl_stapling"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_srv_conf_t, stapling),
-      NULL },
-
-    { ngx_string("ssl_stapling_file"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_str_slot,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_srv_conf_t, stapling_file),
-      NULL },
-
-    { ngx_string("ssl_stapling_responder"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_str_slot,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_srv_conf_t, stapling_responder),
-      NULL },
-
-    { ngx_string("ssl_stapling_verify"),
-      NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_FLAG,
-      ngx_conf_set_flag_slot,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      offsetof(ngx_stream_ssl_srv_conf_t, stapling_verify),
->>>>>>> 366b5c65a (OCSP: fixed invalid type for the 'ssl_ocsp' directive.)
-      NULL },
-
     { ngx_string("ssl_conf_command"),
       NGX_STREAM_MAIN_CONF|NGX_STREAM_SRV_CONF|NGX_CONF_TAKE2,
       ngx_conf_set_keyval_slot,
@@ -458,12 +408,11 @@ static ngx_str_t ngx_stream_ssl_sess_id_ctx = ngx_string("STREAM");
 static ngx_int_t
 ngx_stream_ssl_handler(ngx_stream_session_t *s)
 {
-    long                        rc;
-    X509                       *cert;
-    ngx_int_t                   rv;
-    const char                 *str;
-    ngx_connection_t           *c;
-    ngx_stream_ssl_conf_t      *sslcf;
+    long                    rc;
+    X509                   *cert;
+    ngx_int_t               rv;
+    ngx_connection_t       *c;
+    ngx_stream_ssl_conf_t  *sslcf;
 
     if (!s->ssl) {
         return NGX_OK;
@@ -511,15 +460,6 @@ ngx_stream_ssl_handler(ngx_stream_session_t *s)
             }
 
             X509_free(cert);
-        }
-
-        if (ngx_ssl_ocsp_get_status(c, &str) != NGX_OK) {
-            ngx_log_error(NGX_LOG_INFO, c->log, 0,
-                          "client SSL certificate verify error: %s", str);
-
-            ngx_ssl_remove_cached_session(c->ssl->session_ctx,
-                                       (SSL_get0_session(c->ssl->connection)));
-            return NGX_ERROR;
         }
     }
 
