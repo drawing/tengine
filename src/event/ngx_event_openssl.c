@@ -5830,9 +5830,10 @@ ngx_ssl_get_curves(ngx_connection_t *c, ngx_pool_t *pool, ngx_str_t *s)
 {
 #ifdef SSL_CTRL_GET_CURVES
 
-    int         *curves, n, i, nid;
-    u_char      *p;
-    size_t       len;
+    int            *curves, n, i, nid;
+    u_char         *p;
+    size_t          len;
+    const char     *name;
 
     n = SSL_get1_curves(c->ssl->connection, NULL);
 

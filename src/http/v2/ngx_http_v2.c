@@ -3810,6 +3810,9 @@ ngx_http_v2_parse_header(ngx_http_request_t *r,
         return NGX_ABORT;
     }
 
+    return NGX_OK;
+}
+
 
 static ngx_int_t
 ngx_http_v2_construct_request_line(ngx_http_request_t *r)
