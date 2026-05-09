@@ -39,9 +39,11 @@ http {
     proxy_cache_path %%TESTDIR%%/cache    keys_zone=NAME:1m;
 
     server {
-        listen       127.0.0.1:8080 http2;
+        listen       127.0.0.1:8080;
         listen       127.0.0.1:8081;
         server_name  localhost;
+
+        http2 on;
 
         location /cache {
             proxy_pass http://127.0.0.1:8081/;

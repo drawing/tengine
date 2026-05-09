@@ -41,9 +41,11 @@ http {
     limit_req_zone   $binary_remote_addr  zone=req:1m rate=1r/s;
 
     server {
-        listen       127.0.0.1:8080 http2;
+        listen       127.0.0.1:8080;
         listen       127.0.0.1:8081;
         server_name  localhost;
+
+        http2 on;
 
         location / { }
         location /limit_req {

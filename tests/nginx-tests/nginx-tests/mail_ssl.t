@@ -46,7 +46,7 @@ mail {
 
     ssl_password_file password;
 
-    auth_http  http://127.0.0.1:8080;	# unused
+    auth_http  http://127.0.0.1:8080; # unused
 
 
     server {
@@ -57,6 +57,7 @@ mail {
     }
 
     server {
+
 
 
 
@@ -139,6 +140,7 @@ foreach my $name ('localhost', 'inherits') {
 $t->write_file('password', 'localhost');
 
 $t->run();
+open STDERR, ">&", \*OLDERR;
 
 ###############################################################################
 
@@ -190,8 +192,6 @@ $s = Test::Nginx::IMAP->new(
 	SSL_alpn_protocols => [ 'imap' ]
 );
 $s->ok('alpn');
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.21.4');
 
 $s = Test::Nginx::IMAP->new(
 	PeerAddr => '127.0.0.1:' . port(8148),
@@ -199,8 +199,6 @@ $s = Test::Nginx::IMAP->new(
 	SSL_alpn_protocols => [ 'unknown' ]
 );
 ok(!$s->read(), 'alpn rejected');
-
-}
 
 }
 

@@ -25,8 +25,12 @@ select STDOUT; $| = 1;
 
 my $t = Test::Nginx->new()
 	->has(qw/stream stream_ssl stream_return socket_ssl_alpn/)
-	->has_daemon('openssl')
-	->write_file_expand('nginx.conf', <<'EOF');
+	->has_daemon('openssl');
+
+plan(skip_all => 'no ALPN support in OpenSSL')
+	if $t->has_module('OpenSSL') and not $t->has_feature('openssl:1.0.2');
+
+$t->write_file_expand('nginx.conf', <<'EOF');
 
 %%TEST_GLOBALS%%
 
@@ -74,7 +78,7 @@ foreach my $name ('localhost') {
 		or die "Can't create certificate for $name: $!\n";
 }
 
-$t->try_run('no ssl_alpn')->plan(6);
+$t->run()->plan(6);
 
 ###############################################################################
 

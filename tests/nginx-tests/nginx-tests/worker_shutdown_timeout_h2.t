@@ -39,8 +39,10 @@ http {
     %%TEST_GLOBALS_HTTP%%
 
     server {
-        listen       127.0.0.1:8080 http2;
+        listen       127.0.0.1:8080;
         server_name  localhost;
+
+        http2 on;
 
         location / {
             proxy_pass http://127.0.0.1:8081;

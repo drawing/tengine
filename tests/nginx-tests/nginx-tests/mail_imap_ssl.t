@@ -230,13 +230,8 @@ like($f, qr!^on:SUCCESS:(/?CN=3.example.com):\1:\w+:\w+:[^:]+:s5$!m,
 	'log - trusted cert');
 
 
-TODO: {
-local $TODO = 'not yet' unless $t->has_version('1.21.2');
-
 $f = $t->read_file('auth2.log');
 like($f, qr|^$cipher:$sslversion$|m, 'log - cipher sslversion');
-
-}
 
 
 ###############################################################################

@@ -131,7 +131,10 @@ $t->write_file('openssl.conf', <<EOF);
 default_bits = 2048
 encrypt_key = no
 distinguished_name = req_distinguished_name
+x509_extensions = myca_extensions
 [ req_distinguished_name ]
+[ myca_extensions ]
+basicConstraints = critical,CA:TRUE
 EOF
 
 my $d = $t->testdir();
@@ -236,14 +239,15 @@ TODO: {
 local $TODO = 'no TLSv1.3 sessions in LibreSSL'
 	if $t->has_module('LibreSSL') && test_tls13();
 local $TODO = 'no TLSv1.3 sessions ids in BoringSSL'
-	if $t->has_module('BoringSSL') && test_tls13();
+	if $t->has_module('BoringSSL|AWS-LC') && test_tls13();
+
 like(get('/id', 8085, $ctx), qr/^body \w{64}$/m, 'session id reused');
 }
 unlike(http_get('/id'), qr/body \w/, 'session id no ssl');
 like(get('/cipher', 8085), qr/^body [\w-]+$/m, 'cipher');
 
 SKIP: {
-skip 'BoringSSL', 1 if $t->has_module('BoringSSL');
+skip 'BoringSSL', 1 if $t->has_module('BoringSSL|AWS-LC');
 
 like(get('/ciphers', 8085), qr/^body [:\w-]+$/m, 'ciphers');
 
@@ -281,7 +285,7 @@ ok(!!get_ssl_socket(8085), 'ssl unexpected eof');
 
 # close_notify is sent before lingering close
 
-is(!!get_ssl_shutdown(8085), 1, 'ssl shutdown on lingering close');
+ok(get_ssl_shutdown(8085), 'ssl shutdown on lingering close');
 
 $t->stop();
 
@@ -355,9 +359,9 @@ sub get_ssl_shutdown {
 	);
 	$s->blocking(0);
 	while (IO::Select->new($s)->can_read(8)) {
-                my $n = $s->sysread(my $buf, 16384);
-                next if !defined $n && $!{EWOULDBLOCK};
-                last;
+		my $n = $s->sysread(my $buf, 16384);
+		next if !defined $n && $!{EWOULDBLOCK};
+		last;
 	}
 	$s->blocking(1);
 	return $s->stop_SSL();
