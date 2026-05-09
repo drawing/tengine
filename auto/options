@@ -46,6 +46,8 @@ USE_THREADS=NO
 
 NGX_FILE_AIO=NO
 
+QUIC_BPF=NO
+
 HTTP=YES
 
 NGX_HTTP_LOG_PATH=
@@ -60,6 +62,7 @@ HTTP_CHARSET=YES
 HTTP_GZIP=YES
 HTTP_SSL=YES
 HTTP_V2=NO
+HTTP_V3=NO
 HTTP_SSI=YES
 HTTP_REALIP=NO
 HTTP_XSLT=NO
@@ -107,6 +110,7 @@ HTTP_UPSTREAM_RANDOM=YES
 HTTP_UPSTREAM_KEEPALIVE=YES
 HTTP_UPSTREAM_RBTREE=YES
 HTTP_UPSTREAM_ZONE=YES
+HTTP_UPSTREAM_STICKY=YES
 
 # STUB
 HTTP_STUB_STATUS=YES
@@ -130,6 +134,7 @@ STREAM_GEOIP=NO
 STREAM_MAP=YES
 STREAM_SPLIT_CLIENTS=YES
 STREAM_RETURN=YES
+STREAM_PASS=YES
 STREAM_SET=YES
 STREAM_UPSTREAM_HASH=YES
 STREAM_UPSTREAM_LEAST_CONN=YES
@@ -156,6 +161,7 @@ PCRE_JIT=NO
 PCRE2=YES
 
 USE_OPENSSL=NO
+USE_OPENSSL_QUIC=NO
 OPENSSL=NONE
 
 USE_ZLIB=NO
@@ -184,6 +190,8 @@ USE_GEOIP=NO
 
 NGX_GOOGLE_PERFTOOLS=NO
 NGX_CPP_TEST=NO
+
+SO_COOKIE_FOUND=NO
 
 NGX_LIBATOMIC=NO
 
@@ -236,6 +244,8 @@ do
 
         --with-file-aio)                 NGX_FILE_AIO=YES           ;;
 
+        --without-quic_bpf_module)       QUIC_BPF=NONE              ;;
+
         --with-ipv6)
             NGX_POST_CONF_MSG="$NGX_POST_CONF_MSG
 $0: warning: the \"--with-ipv6\" option is deprecated"
@@ -253,6 +263,7 @@ $0: warning: the \"--with-ipv6\" option is deprecated"
 
         --with-http_ssl_module)          HTTP_SSL=YES               ;;
         --with-http_v2_module)           HTTP_V2=YES                ;;
+        --with-http_v3_module)           HTTP_V3=YES                ;;
         --with-http_realip_module)       HTTP_REALIP=YES            ;;
         --with-http_addition_module)     HTTP_ADDITION=YES          ;;
         --with-http_xslt_module)         HTTP_XSLT=YES              ;;
@@ -307,6 +318,7 @@ $0: warning: the \"--with-ipv6\" option is deprecated"
                                          HTTP_UPSTREAM_RANDOM=NO    ;;
         --without-http_upstream_keepalive_module) HTTP_UPSTREAM_KEEPALIVE=NO ;;
         --without-http_upstream_zone_module) HTTP_UPSTREAM_ZONE=NO  ;;
+        --without-http_upstream_sticky)  HTTP_UPSTREAM_STICKY=NO    ;;
 
         --with-http_perl_module)         HTTP_PERL=YES              ;;
         --with-http_perl_module=dynamic) HTTP_PERL=DYNAMIC          ;;
@@ -368,6 +380,7 @@ use the \"--with-mail_ssl_module\" option instead"
         --without-stream_split_clients_module)
                                          STREAM_SPLIT_CLIENTS=NO    ;;
         --without-stream_return_module)  STREAM_RETURN=NO           ;;
+        --without-stream_pass_module)    STREAM_PASS=NO             ;;
         --without-stream_set_module)     STREAM_SET=NO              ;;
         --without-stream_upstream_hash_module)
                                          STREAM_UPSTREAM_HASH=NO    ;;
@@ -491,8 +504,11 @@ cat << END
 
   --with-file-aio                    enable file AIO support
 
+  --without-quic_bpf_module          disable ngx_quic_bpf_module
+
   --with-http_ssl_module             enable ngx_http_ssl_module
   --with-http_v2_module              enable ngx_http_v2_module
+  --with-http_v3_module              enable ngx_http_v3_module
   --with-http_realip_module          enable ngx_http_realip_module
   --with-http_addition_module        enable ngx_http_addition_module
   --with-http_xslt_module            enable ngx_http_xslt_module
@@ -552,6 +568,7 @@ cat << END
                                      disable ngx_http_upstream_keepalive_module
   --without-http_upstream_zone_module
                                      disable ngx_http_upstream_zone_module
+  --without-http_upstream_sticky     disable sticky upstream modules
 
   --with-http_perl_module            enable ngx_http_perl_module
   --with-http_perl_module=dynamic    enable dynamic ngx_http_perl_module
@@ -606,6 +623,7 @@ cat << END
   --without-stream_split_clients_module
                                      disable ngx_stream_split_clients_module
   --without-stream_return_module     disable ngx_stream_return_module
+  --without-stream_pass_module       disable ngx_stream_pass_module
   --without-stream_set_module        disable ngx_stream_set_module
   --without-stream_upstream_hash_module
                                      disable ngx_stream_upstream_hash_module

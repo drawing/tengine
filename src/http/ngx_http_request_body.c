@@ -92,6 +92,13 @@ ngx_http_read_client_request_body(ngx_http_request_t *r,
     }
 #endif
 
+#if (NGX_HTTP_V3)
+    if (r->http_version == NGX_HTTP_VERSION_30) {
+        rc = ngx_http_v3_read_request_body(r);
+        goto done;
+    }
+#endif
+
 #if (T_NGX_XQUIC)
     if (r->xqstream) {
         rc = ngx_http_v3_read_request_body(r);
@@ -236,6 +243,18 @@ ngx_http_read_unbuffered_request_body(ngx_http_request_t *r)
 #if (NGX_HTTP_V2)
     if (r->stream) {
         rc = ngx_http_v2_read_unbuffered_request_body(r);
+
+        if (rc == NGX_OK) {
+            r->reading_body = 0;
+        }
+
+        return rc;
+    }
+#endif
+
+#if (NGX_HTTP_V3)
+    if (r->http_version == NGX_HTTP_VERSION_30) {
+        rc = ngx_http_v3_read_unbuffered_request_body(r);
 
         if (rc == NGX_OK) {
             r->reading_body = 0;
@@ -647,6 +666,12 @@ ngx_http_discard_request_body(ngx_http_request_t *r)
     }
 #endif
 
+#if (NGX_HTTP_V3)
+    if (r->http_version == NGX_HTTP_VERSION_30) {
+        return NGX_OK;
+    }
+#endif
+
 #if (T_NGX_XQUIC)
     if (r->xqstream) {
         r->xqstream->skip_data = 1;
@@ -874,7 +899,7 @@ ngx_http_discard_request_body_filter(ngx_http_request_t *r, ngx_buf_t *b)
 
         for ( ;; ) {
 
-            rc = ngx_http_parse_chunked(r, b, rb->chunked);
+            rc = ngx_http_parse_chunked(r, b, rb->chunked, 0);
 
             if (rc == NGX_OK) {
 
@@ -949,6 +974,9 @@ ngx_http_test_expect(ngx_http_request_t *r)
         || r->http_version < NGX_HTTP_VERSION_11
 #if (NGX_HTTP_V2)
         || r->stream != NULL
+#endif
+#if (NGX_HTTP_V3)
+        || r->connection->quic != NULL
 #endif
 #if (T_NGX_XQUIC)
         || r->xqstream != NULL
@@ -1135,7 +1163,7 @@ ngx_http_request_body_chunked_filter(ngx_http_request_t *r, ngx_chain_t *in)
                            cl->buf->file_pos,
                            cl->buf->file_last - cl->buf->file_pos);
 
-            rc = ngx_http_parse_chunked(r, cl->buf, rb->chunked);
+            rc = ngx_http_parse_chunked(r, cl->buf, rb->chunked, 0);
 
             if (rc == NGX_OK) {
 
