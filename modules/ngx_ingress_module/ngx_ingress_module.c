@@ -291,12 +291,12 @@ ngx_ingress_check_upstream_enable(ngx_ingress_service_t *service)
     return enable;
 }
 
-ngx_int_t 
-ngx_ingress_tag_value_compar(const void *v1, const void *v2) 
+int
+ngx_ingress_tag_value_compar(const void *v1, const void *v2)
 {
     ngx_str_t *s1 = (ngx_str_t *)v1;
     ngx_str_t *s2 = (ngx_str_t *)v2;
-    return ngx_comm_strcasecmp(s1, s2);
+    return (int) ngx_comm_strcasecmp(s1, s2);
 }
 
 ngx_int_t

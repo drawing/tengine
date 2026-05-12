@@ -9,7 +9,7 @@
 #include <ngx_core.h>
 #include <ngx_event.h>
 
-#if (NGX_ZLIB && defined TLSEXT_cert_compression_zlib)
+#if (NGX_ZLIB && defined TLSEXT_cert_compression_zlib && !T_NGX_SSL_NTLS)
 #include <zlib.h>
 #endif
 
@@ -23,7 +23,7 @@ typedef struct {
 
 
 static ngx_inline ngx_int_t ngx_ssl_cert_already_in_hash(void);
-#if (NGX_ZLIB && defined TLSEXT_cert_compression_zlib)
+#if (NGX_ZLIB && defined TLSEXT_cert_compression_zlib && !T_NGX_SSL_NTLS)
 static int ngx_ssl_cert_compression_callback(ngx_ssl_conn_t *ssl_conn,
     CBB *out, const uint8_t *in, size_t in_len);
 static void *ngx_ssl_cert_compression_alloc(void *opaque, u_int items,
@@ -1055,7 +1055,7 @@ ngx_ssl_certificate_compression(ngx_conf_t *cf, ngx_ssl_t *ssl,
 
     SSL_CTX_clear_options(ssl->ctx, SSL_OP_NO_TX_CERTIFICATE_COMPRESSION);
 
-#elif (NGX_ZLIB && defined TLSEXT_cert_compression_zlib)
+#elif (NGX_ZLIB && defined TLSEXT_cert_compression_zlib && !T_NGX_SSL_NTLS)
 
     if (SSL_CTX_add_cert_compression_alg(ssl->ctx, TLSEXT_cert_compression_zlib,
                                          ngx_ssl_cert_compression_callback,
@@ -1079,7 +1079,7 @@ ngx_ssl_certificate_compression(ngx_conf_t *cf, ngx_ssl_t *ssl,
 }
 
 
-#if (NGX_ZLIB && defined TLSEXT_cert_compression_zlib)
+#if (NGX_ZLIB && defined TLSEXT_cert_compression_zlib && !T_NGX_SSL_NTLS)
 
 static int
 ngx_ssl_cert_compression_callback(ngx_ssl_conn_t *ssl_conn, CBB *out,

@@ -283,8 +283,8 @@ best_chosen:
     pc->sockaddr = best->sockaddr;
     pc->socklen = best->socklen;
     pc->name = &best->name;
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE) 
-    pc->host = &best->host;
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
+    pc->host = &best->t_host;
 #endif
 
 #if (NGX_HTTP_UPSTREAM_SID)

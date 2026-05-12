@@ -33,7 +33,10 @@ static ngx_int_t ngx_http_process_connection(ngx_http_request_t *r,
 static ngx_int_t ngx_http_process_user_agent(ngx_http_request_t *r,
     ngx_table_elt_t *h, ngx_uint_t offset);
 
-static ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r);
+#if (T_NGX_XQUIC)
+/* Exposed for xquic module to validate request headers after H3 construction */
+ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r);
+#endif
 static ngx_int_t ngx_http_find_virtual_server(ngx_connection_t *c,
     ngx_http_virtual_names_t *virtual_names, ngx_str_t *host,
     ngx_http_request_t *r, ngx_http_core_srv_conf_t **cscfp);
@@ -228,7 +231,7 @@ ngx_http_init_connection(ngx_connection_t *c)
     ngx_http_in6_addr_t       *addr6;
 #endif
 #if (NGX_HTTP_V2 && T_NGX_HTTP2_SRV_ENABLE)
-    ngx_http_v2_srv_conf_t *h2scf;
+    ngx_http_v2_srv_conf_t   *h2scf;
 #endif
 
 
@@ -342,20 +345,17 @@ ngx_http_init_connection(ngx_connection_t *c)
     if (hc->addr_conf->quic) {
         ngx_http_v3_init_stream(c);
         return;
-#if (NGX_HTTP_V2 && T_NGX_HTTP2_SRV_ENABLE)
-    h2scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v2_module);
+    }
 #endif
 
+#if (NGX_HTTP_V2 && T_NGX_HTTP2_SRV_ENABLE)
+    h2scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v2_module);
+
     if (
-#if (T_NGX_HTTP2_SRV_ENABLE)
-        (
-#endif
-         hc->addr_conf->http2
-#if (T_NGX_HTTP2_SRV_ENABLE)
-         && h2scf->enable != 0) || h2scf->enable == 1
-#endif
+        (hc->addr_conf->http2 && h2scf->enable != 0) || h2scf->enable == 1
        )
     {
+        rev->handler = ngx_http_v2_init;
     }
 #endif
 
@@ -480,20 +480,11 @@ ngx_http_wait_request_handler(ngx_event_t *rev)
             if (ngx_pfree(c->pool, b->start) == NGX_OK) {
                 b->start = NULL;
             }
-#if (NGX_HTTP_SSL && NGX_SSL_ASYNC)
-        /* For the Async implementation we need the same buffer to be used
-         * again on any async calls that have not completed.
-         * As such we need to turn off this optimisation if an async request
-         * is still in progress.
-         */
-        if ((c->async_enable && !ngx_ssl_waiting_for_async(c)) || !c->async_enable) {
-#endif
-#if (NGX_HTTP_SSL && NGX_SSL_ASYNC)
-        }
-#endif
 
-        return;
-    }
+            return;
+        }
+
+    }  /* if (n == NGX_AGAIN) */
 
     if (n == NGX_ERROR) {
         ngx_http_close_connection(c);
@@ -926,41 +917,13 @@ ngx_http_ssl_handshake_handler(ngx_connection_t *c)
         ngx_http_connection_t   *hc;
         ngx_http_v2_srv_conf_t  *h2scf;
 
-#if (T_NGX_HTTP2_SRV_ENABLE)
-        ngx_http_v2_srv_conf_t *h2scf;
-#endif
         hc = c->data;
 
         h2scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v2_module);
 
         if (h2scf->enable || hc->addr_conf->http2) {
-#if (T_NGX_HTTP2_SRV_ENABLE)
-        h2scf = ngx_http_get_module_srv_conf(hc->conf_ctx, ngx_http_v2_module);
-#endif
 
-        if (
-#if (T_NGX_HTTP2_SRV_ENABLE)
-            (
-#endif
-             hc->addr_conf->http2
-#if (T_NGX_HTTP2_SRV_ENABLE)
-             && h2scf->enable != 0) || h2scf->enable == 1
-#endif
-           )
-        {
-
-#ifdef TLSEXT_TYPE_application_layer_protocol_negotiation
             SSL_get0_alpn_selected(c->ssl->connection, &data, &len);
-
-#ifdef TLSEXT_TYPE_next_proto_neg
-            if (len == 0) {
-                SSL_get0_next_proto_negotiated(c->ssl->connection, &data, &len);
-            }
-#endif
-
-#else /* TLSEXT_TYPE_next_proto_neg */
-            SSL_get0_next_proto_negotiated(c->ssl->connection, &data, &len);
-#endif
 
             if (len == 2 && data[0] == 'h' && data[1] == '2') {
                 ngx_http_v2_init(c->read);
@@ -1190,7 +1153,7 @@ ngx_http_ssl_ctx_reset(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 
     host.data = (u_char *) servername;
 
-    rc = ngx_http_validate_host(&host, c->pool, 1);
+    rc = ngx_http_validate_host(&host, NULL, c->pool, 1);
 
     if (rc == NGX_ERROR) {
         *ad = SSL_AD_INTERNAL_ERROR;
@@ -1308,13 +1271,17 @@ ngx_http_request_get_variable(ngx_http_request_t *r, ngx_str_t *name, ngx_str_t 
 int
 ngx_http_ssl_client_hello_callback(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
 {
-    int                        ret, rv;
-    void                      *cert_cb_arg;
+    int                        ret;
     size_t                     len, remaining;
-    SSL_CTX                   *ssl_ctx;
     unsigned char             *servername;
+#if (T_NGX_SSL_NTLS)
+    /* ssl_ctx/options/cert_cb_fn/SSL_CTX_get_cert_cb are Tongsuo/BabaSSL extensions */
+    int                        rv;
+    void                      *cert_cb_arg;
+    SSL_CTX                   *ssl_ctx;
     unsigned long              options;
     SSL_cert_cb_fn             cert_cb;
+#endif
     ngx_connection_t          *c;
     const unsigned char       *p;
     ngx_http_request_t        *r;
@@ -1332,9 +1299,11 @@ ngx_http_ssl_client_hello_callback(ngx_ssl_conn_t *ssl_conn, int *ad, void *arg)
         return SSL_CLIENT_HELLO_SUCCESS;
     }
 
+#if (T_NGX_SSL_NTLS)
     if (c->ssl && c->ssl->client_hello_retry) {
         goto recover;
     }
+#endif
 
     if (SSL_client_hello_get0_ext(ssl_conn, TLSEXT_TYPE_status_request, &p,
         &remaining) == 1)
@@ -1490,6 +1459,7 @@ proto_next:
     ret = ngx_http_ssl_ctx_reset(ssl_conn, ad, arg);
 
     if (ret == SSL_TLSEXT_ERR_OK || ret == SSL_TLSEXT_ERR_NOACK) {
+#if (T_NGX_SSL_NTLS)
 recover:
         ssl_ctx = SSL_get_SSL_CTX(ssl_conn);
         if (c->ssl && c->ssl->client_hello_retry == 0) {
@@ -1499,6 +1469,7 @@ recover:
             SSL_set_options(ssl_conn, options);
         }
 
+        /* SSL_CTX_get_cert_cb / SSL_CTX_get_cert_cb_arg are Tongsuo extensions */
         cert_cb = SSL_CTX_get_cert_cb(ssl_ctx);
         cert_cb_arg = SSL_CTX_get_cert_cb_arg(ssl_ctx);
         if (cert_cb != NULL) {
@@ -1516,6 +1487,7 @@ recover:
 
             c->ssl->client_hello_retry = 0;
         }
+#endif
     }
 
 end:
@@ -1661,7 +1633,7 @@ ngx_http_process_request_line(ngx_event_t *rev)
 
                 host.len = r->connect_host_end - r->connect_host_start;
                 host.data = r->connect_host_start;
-                rc = ngx_http_validate_host(&host, r->pool, 0);
+                rc = ngx_http_validate_host(&host, NULL, r->pool, 0);
 
                 if (rc == NGX_DECLINED) {
                     ngx_log_error(NGX_LOG_INFO, c->log, 0,
@@ -2578,7 +2550,7 @@ ngx_http_process_user_agent(ngx_http_request_t *r, ngx_table_elt_t *h,
 }
 
 
-static ngx_int_t
+ngx_int_t
 ngx_http_process_request_header(ngx_http_request_t *r)
 {
     ngx_http_core_srv_conf_t  *cscf;
@@ -2661,8 +2633,8 @@ ngx_http_process_request_header(ngx_http_request_t *r)
                       "client sent CONNECT method");
         ngx_http_finalize_request(r, NGX_HTTP_NOT_ALLOWED);
         return NGX_ERROR;
-    }
 #endif
+    }
 
     if (r->method == NGX_HTTP_TRACE) {
         ngx_log_error(NGX_LOG_INFO, r->connection->log, 0,

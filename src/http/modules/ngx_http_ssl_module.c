@@ -889,7 +889,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "no \"ssl_enc_certificate\" is defined for "
                               "the \"ssl\" directive in %s:%ui",
-                              conf->file, conf->line);
+                              cf->conf_file->file.name.data, cf->conf_file->line);
                 return NGX_CONF_ERROR;
             }
 
@@ -897,7 +897,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "no \"ssl_sign_certificate\" is defined for "
                               "the \"ssl\" directive in %s:%ui",
-                              conf->file, conf->line);
+                              cf->conf_file->file.name.data, cf->conf_file->line);
                 return NGX_CONF_ERROR;
             }
 
@@ -905,7 +905,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "no \"ssl_enc_certificate_key\" is defined for "
                               "the \"ssl\" directive in %s:%ui",
-                              conf->file, conf->line);
+                              cf->conf_file->file.name.data, cf->conf_file->line);
                 return NGX_CONF_ERROR;
             }
 
@@ -913,7 +913,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
                 ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "no \"ssl_sign_certificate_key\" is defined for "
                               "the \"ssl\" directive in %s:%ui",
-                              conf->file, conf->line);
+                              cf->conf_file->file.name.data, cf->conf_file->line);
                 return NGX_CONF_ERROR;
             }
 #endif
@@ -935,7 +935,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "no \"ssl_enc_certificate\" is defined for "
                           "the \"ssl\" directive in %s:%ui",
-                          conf->file, conf->line);
+                          cf->conf_file->file.name.data, cf->conf_file->line);
             return NGX_CONF_ERROR;
         }
 
@@ -943,7 +943,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "no \"ssl_sign_certificate\" is defined for "
                           "the \"ssl\" directive in %s:%ui",
-                          conf->file, conf->line);
+                          cf->conf_file->file.name.data, cf->conf_file->line);
             return NGX_CONF_ERROR;
         }
 
@@ -951,7 +951,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "no \"ssl_enc_certificate_key\" is defined for "
                           "the \"ssl\" directive in %s:%ui",
-                          conf->file, conf->line);
+                          cf->conf_file->file.name.data, cf->conf_file->line);
             return NGX_CONF_ERROR;
         }
 
@@ -959,7 +959,7 @@ ngx_http_ssl_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
             ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                           "no \"ssl_sign_certificate_key\" is defined for "
                           "the \"ssl\" directive in %s:%ui",
-                          conf->file, conf->line);
+                          cf->conf_file->file.name.data, cf->conf_file->line);
             return NGX_CONF_ERROR;
         }
 #endif
@@ -1730,11 +1730,14 @@ ngx_http_ssl_init(ngx_conf_t *cf)
             }
 #endif
             if (!sscf->reject_handshake) {
-                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
 #if (T_NGX_SSL_NTLS)
+                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "no \"ssl_certificate\", \"ssl_enc_certificate\" "
                               "or \"ssl_sign_certificate\" is defined for "
+                              "the \"listen ... %s\" directive in %s:%ui",
+                              name, cscf->file_name, cscf->line);
 #else
+                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "no \"ssl_certificate\" is defined for "
                               "the \"listen ... %s\" directive in %s:%ui",
                               name, cscf->file_name, cscf->line);
@@ -1762,14 +1765,18 @@ ngx_http_ssl_init(ngx_conf_t *cf)
                     continue;
                 }
 #endif
-                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
 #if (T_NGX_SSL_NTLS)
+                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "no \"ssl_certificate\", \"ssl_enc_certificate\" "
                               "or \"ssl_sign_certificate\" is defined for "
+                              "the \"listen ... %s\" directive in %s:%ui",
+                              name, cscf->file_name, cscf->line);
 #else
+                ngx_log_error(NGX_LOG_EMERG, cf->log, 0,
                               "no \"ssl_certificate\" is defined for "
                               "the \"listen ... %s\" directive in %s:%ui",
                               name, cscf->file_name, cscf->line);
+#endif
                 return NGX_ERROR;
             }
         }
@@ -1796,7 +1803,6 @@ ngx_http_ssl_quic_compat_init(ngx_conf_t *cf, ngx_http_conf_addr_t *addr)
 
         if (sscf->certificates || sscf->reject_handshake) {
             if (ngx_quic_compat_init(cf, sscf->ssl.ctx) != NGX_OK) {
-#endif
                 return NGX_ERROR;
             }
         }

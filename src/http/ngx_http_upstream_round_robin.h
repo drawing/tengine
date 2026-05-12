@@ -54,7 +54,10 @@ struct ngx_http_upstream_rr_peer_s {
 #endif
 
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    ngx_str_t                       host;
+    /* Tengine dynamic resolve: hostname for dynamic DNS resolution.
+     * Named t_host to distinguish from NGX_HTTP_UPSTREAM_ZONE's host field
+     * (ngx_http_upstream_host_t *) which has a different type. */
+    ngx_str_t                       t_host;
 #endif
 
     ngx_int_t                       current_weight;

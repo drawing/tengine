@@ -279,8 +279,8 @@ found:
     pc->sid = &peer->sid;
 #endif
 
-#if (T_NGX_HTTP_DYNAMIC_RESOLVE) 
-    pc->host = &peer->host;
+#if (T_NGX_HTTP_DYNAMIC_RESOLVE)
+    pc->host = &peer->t_host;
 #endif
     peer->conns++;
 

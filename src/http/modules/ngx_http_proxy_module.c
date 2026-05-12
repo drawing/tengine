@@ -69,10 +69,6 @@ typedef struct {
 
 
 
-#if (T_NGX_SOCKET_BUFFER)
-    size_t                         sndbuf;
-    size_t                         rcvbuf;
-#endif
 
 
 
@@ -3694,8 +3690,8 @@ ngx_http_proxy_create_loc_conf(ngx_conf_t *cf)
     ngx_str_set(&conf->upstream.module, "proxy");
 
 #if (T_NGX_SOCKET_BUFFER)
-    conf->sndbuf = NGX_CONF_UNSET_SIZE;
-    conf->rcvbuf = NGX_CONF_UNSET_SIZE;
+    conf->sndbuf = NGX_CONF_UNSET;
+    conf->rcvbuf = NGX_CONF_UNSET;
 #endif
 
     return conf;
@@ -3783,8 +3779,8 @@ ngx_http_proxy_merge_loc_conf(ngx_conf_t *cf, void *parent, void *child)
                               prev->upstream.limit_rate, NULL);
 
 #if (T_NGX_SOCKET_BUFFER)
-    ngx_conf_merge_size_value(conf->sndbuf, prev->sndbuf, (size_t) 0);
-    ngx_conf_merge_size_value(conf->rcvbuf, prev->rcvbuf, (size_t) 0);
+    ngx_conf_merge_value(conf->sndbuf, prev->sndbuf, 0);
+    ngx_conf_merge_value(conf->rcvbuf, prev->rcvbuf, 0);
 #endif
 
     ngx_conf_merge_bufs_value(conf->upstream.bufs, prev->upstream.bufs,

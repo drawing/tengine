@@ -663,6 +663,11 @@ typedef struct {
 extern ngx_http_header_t       ngx_http_headers_in[];
 extern ngx_http_header_out_t   ngx_http_headers_out[];
 
+#if (T_NGX_XQUIC)
+/* Exposed for xquic module to validate request headers after H3 construction */
+ngx_int_t ngx_http_process_request_header(ngx_http_request_t *r);
+#endif
+
 
 #define ngx_http_set_log_request(log, r)                                      \
     ((ngx_http_log_ctx_t *) log->data)->current_request = r

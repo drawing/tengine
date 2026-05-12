@@ -120,7 +120,6 @@ ngx_http_v2_header_filter(ngx_http_request_t *r)
     ngx_http_core_srv_conf_t  *cscf;
     u_char                     addr[NGX_SOCKADDR_STRLEN];
 
-    static const u_char nginx[5] = { 0x84, 0xaa, 0x63, 0x55, 0xe7 };
 #if (T_NGX_SERVER_INFO)
     static const u_char nginx[6] = "\x85\xde\x5a\xa6\x35\x45";
 #else

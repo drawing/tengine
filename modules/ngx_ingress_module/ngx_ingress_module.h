@@ -148,6 +148,6 @@ typedef struct {
 
 
 ngx_int_t ngx_ingress_update_shm_by_pb(ngx_ingress_gateway_t *gateway, ngx_ingress_shared_memory_config_t *shm_pb_config, ngx_ingress_t *ingress);
-ngx_int_t ngx_ingress_tag_value_compar(const void *v1, const void *v2);
+int ngx_ingress_tag_value_compar(const void *v1, const void *v2);
 
 #endif // NGX_INGRESS_MODULE_H

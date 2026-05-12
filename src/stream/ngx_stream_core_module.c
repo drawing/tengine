@@ -32,10 +32,6 @@ static char *ngx_stream_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd,
 static char *ngx_stream_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd,
     void *conf);
 
-#if (T_NGX_STREAM_SNI)
-static char *ngx_stream_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd,
-    void *conf);
-#endif
 
 static ngx_command_t  ngx_stream_core_commands[] = {
 
@@ -137,29 +133,6 @@ static ngx_command_t  ngx_stream_core_commands[] = {
       offsetof(ngx_stream_core_srv_conf_t, preread_timeout),
       NULL },
 
-#if (T_NGX_STREAM_SNI)
-    { ngx_string("server_name"),
-      NGX_STREAM_SRV_CONF|NGX_CONF_1MORE,
-      ngx_stream_core_server_name,
-      NGX_STREAM_SRV_CONF_OFFSET,
-      0,
-      NULL },
-
-    { ngx_string("server_names_hash_max_size"),
-      NGX_STREAM_MAIN_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_num_slot,
-      NGX_STREAM_MAIN_CONF_OFFSET,
-      offsetof(ngx_stream_core_main_conf_t, server_names_hash_max_size),
-      NULL },
-
-    { ngx_string("server_names_hash_bucket_size"),
-      NGX_STREAM_MAIN_CONF|NGX_CONF_TAKE1,
-      ngx_conf_set_num_slot,
-      NGX_STREAM_MAIN_CONF_OFFSET,
-      offsetof(ngx_stream_core_main_conf_t, server_names_hash_bucket_size),
-      NULL },
-
-#endif
       ngx_null_command
 };
 
@@ -772,11 +745,6 @@ ngx_stream_core_create_main_conf(ngx_conf_t *cf)
     cmcf->variables_hash_max_size = NGX_CONF_UNSET_UINT;
     cmcf->variables_hash_bucket_size = NGX_CONF_UNSET_UINT;
 
-#if (T_NGX_STREAM_SNI)
-    cmcf->server_names_hash_max_size = NGX_CONF_UNSET_UINT;
-    cmcf->server_names_hash_bucket_size = NGX_CONF_UNSET_UINT;
-#endif
-
     return cmcf;
 }
 
@@ -796,12 +764,6 @@ ngx_stream_core_init_main_conf(ngx_conf_t *cf, void *conf)
 
     ngx_conf_init_uint_value(cmcf->variables_hash_max_size, 1024);
     ngx_conf_init_uint_value(cmcf->variables_hash_bucket_size, 64);
-
-#if (T_NGX_STREAM_SNI)
-    ngx_conf_init_uint_value(cmcf->server_names_hash_max_size, 512);
-    ngx_conf_init_uint_value(cmcf->server_names_hash_bucket_size,
-                             ngx_cacheline_size);
-#endif
 
     cmcf->variables_hash_bucket_size =
                ngx_align(cmcf->variables_hash_bucket_size, ngx_cacheline_size);
@@ -846,15 +808,6 @@ ngx_stream_core_create_srv_conf(ngx_conf_t *cf)
     cscf->preread_buffer_size = NGX_CONF_UNSET_SIZE;
     cscf->preread_timeout = NGX_CONF_UNSET_MSEC;
 
-#if (T_NGX_STREAM_SNI)
-    if (ngx_array_init(&cscf->server_names, cf->temp_pool, 4,
-                       sizeof(ngx_stream_server_name_t))
-        != NGX_OK)
-    {
-        return NULL;
-    }
-#endif
-
     return cscf;
 }
 
@@ -864,11 +817,6 @@ ngx_stream_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
 {
     ngx_stream_core_srv_conf_t *prev = parent;
     ngx_stream_core_srv_conf_t *conf = child;
-#if (T_NGX_STREAM_SNI)
-    ngx_str_t                   name;
-    ngx_stream_server_name_t   *sn;
-#endif
-
 
     ngx_str_t                  name;
     ngx_stream_server_name_t  *sn;
@@ -943,29 +891,6 @@ ngx_stream_core_merge_srv_conf(ngx_conf_t *cf, void *parent, void *child)
     if (conf->server_name.data == NULL) {
         return NGX_CONF_ERROR;
     }
-
-#if (T_NGX_STREAM_SNI)
-    if (conf->server_names.nelts == 0) {
-        /* the array has 4 empty preallocated elements, so push cannot fail */
-        sn = ngx_array_push(&conf->server_names);
-        sn->server = conf;
-        ngx_str_set(&sn->name, "");
-    }
-
-    sn = conf->server_names.elts;
-    name = sn[0].name;
-
-    if (name.data[0] == '.') {
-        name.len--;
-        name.data++;
-    }
-
-    conf->server_name.len = name.len;
-    conf->server_name.data = ngx_pstrdup(cf->pool, &name);
-    if (conf->server_name.data == NULL) {
-        return NGX_CONF_ERROR;
-    }
-#endif
 
     return NGX_CONF_OK;
 }
@@ -1118,15 +1043,6 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 #if !(NGX_WIN32)
         if (ngx_strcmp(value[i].data, "udp") == 0) {
             lsopt.type = SOCK_DGRAM;
-            continue;
-        }
-#endif
-
-#if (T_NGX_STREAM_SNI)
-        if (ngx_strcmp(value[i].data, "default_server") == 0
-            || ngx_strcmp(value[i].data, "default") == 0) {
-
-            ls->default_server = 1;
             continue;
         }
 #endif
@@ -1443,11 +1359,8 @@ ngx_stream_core_listen(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
 #if (NGX_STREAM_SSL)
         if (lsopt.ssl) {
-#if !(T_NGX_HAVE_DTLS)
-        if (ls->ssl) {
             return "\"ssl\" parameter is incompatible with \"udp\"";
         }
-#endif
 #endif
 
         if (lsopt.so_keepalive) {
@@ -1555,10 +1468,6 @@ ngx_stream_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
         value[i].data++;
 
         ngx_memzero(&rc, sizeof(ngx_regex_compile_t));
-#if (T_NGX_STREAM_SNI)
-        continue;
-#endif
-
 
         rc.pattern = value[i];
         rc.err.len = NGX_MAX_CONF_ERRSTR;
@@ -1612,59 +1521,3 @@ ngx_stream_core_resolver(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
 
     return NGX_CONF_OK;
 }
-
-#if (T_NGX_STREAM_SNI)
-static char *
-ngx_stream_core_server_name(ngx_conf_t *cf, ngx_command_t *cmd, void *conf)
-{
-    ngx_stream_core_srv_conf_t *cscf = conf;
-
-    u_char                   ch;
-    ngx_str_t               *value;
-    ngx_uint_t               i;
-    ngx_stream_server_name_t  *sn;
-
-    value = cf->args->elts;
-
-    for (i = 1; i < cf->args->nelts; i++) {
-
-        ch = value[i].data[0];
-
-        if ((ch == '*' && (value[i].len < 3 || value[i].data[1] != '.'))
-            || (ch == '.' && value[i].len < 2))
-        {
-            ngx_conf_log_error(NGX_LOG_EMERG, cf, 0,
-                               "server name \"%V\" is invalid", &value[i]);
-            return NGX_CONF_ERROR;
-        }
-
-        if (ngx_strchr(value[i].data, '/')) {
-            ngx_conf_log_error(NGX_LOG_WARN, cf, 0,
-                               "server name \"%V\" has suspicious symbols",
-                               &value[i]);
-        }
-
-        sn = ngx_array_push(&cscf->server_names);
-        if (sn == NULL) {
-            return NGX_CONF_ERROR;
-        }
-
-        sn->server = cscf;
-
-        if (ngx_strcasecmp(value[i].data, (u_char *) "$hostname") == 0) {
-            sn->name = cf->cycle->hostname;
-
-        } else {
-            sn->name = value[i];
-        }
-
-        if (value[i].data[0] != '~') {
-            ngx_strlow(sn->name.data, sn->name.data, sn->name.len);
-            continue;
-        }
-
-    }
-
-    return NGX_CONF_OK;
-}
-#endif

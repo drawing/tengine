@@ -119,7 +119,9 @@ typedef struct {
 #endif
 
 #if (T_NGX_HTTP_DYNAMIC_RESOLVE)
-    ngx_str_t                        host;
+    /* Tengine dynamic resolve: hostname field, named t_host to avoid conflict
+     * with NGX_HTTP_UPSTREAM_ZONE's host field (ngx_str_t). */
+    ngx_str_t                        t_host;
 #endif
 
     unsigned                         backup:1;

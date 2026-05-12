@@ -66,18 +66,19 @@ typedef struct {
     ngx_flag_t        stapling_verify;
     ngx_str_t         stapling_file;
     ngx_str_t         stapling_responder;
-} ngx_stream_ssl_srv_conf_t;
 
 #if (T_NGX_SSL_NTLS)
-    ngx_flag_t       enable_ntls;
-    ngx_str_t        enc_certificate;
-    ngx_str_t        enc_certificate_key;
-    ngx_str_t        sign_certificate;
-    ngx_str_t        sign_certificate_key;
+    ngx_flag_t        enable_ntls;
+    ngx_str_t         enc_certificate;
+    ngx_str_t         enc_certificate_key;
+    ngx_str_t         sign_certificate;
+    ngx_str_t         sign_certificate_key;
 #endif
+
 #if (T_NGX_STREAM_SNI)
-    ngx_flag_t       sni_force;
+    ngx_flag_t        sni_force;
 #endif
+} ngx_stream_ssl_srv_conf_t;
 
 
 extern ngx_module_t  ngx_stream_ssl_module;
